@@ -67,29 +67,42 @@ public class WordWatcherTests
     }
 
     [Fact]
-    public void BackspacePastTheWordStartInvalidatesTheBuffer()
+    public void BackspacePastTheWordStartDropsThePartlyEditedWord()
     {
         var (w, seen) = Build();
 
-        Type(w, "hallo welt "); // buffer now valid
+        Type(w, "hallo welt ");
         w.OnBackspace();        // deletes the space -> editing earlier text
         Type(w, "en ");
 
-        // "welten" must NOT be emitted: the buffer was invalidated
+        // "welten" must NOT be emitted: the buffer was reset by the edit
         Assert.DoesNotContain(seen, x => x.Word == "welten");
     }
 
     [Fact]
-    public void DoesNotEmitTheFirstWordAfterInvalidate()
+    public void EmitsTheFirstFullyTypedWordAfterInvalidate()
     {
         var (w, seen) = Build();
 
-        w.Invalidate();
-        Type(w, "mitten ");   // typed where the cursor jumped - not trustworthy
-        Type(w, "danach ");   // fully typed in place - trustworthy
+        w.Invalidate();          // e.g. the user clicked into a field
+        Type(w, "danach ");
 
-        Assert.Single(seen);
-        Assert.Equal("danach", seen[0].Word);
+        var completed = Assert.Single(seen);
+        Assert.Equal("danach", completed.Word);
+        Assert.False(completed.Context.IsSentenceStart); // Kontext nach Sprung unbekannt
+    }
+
+    [Fact]
+    public void InvalidateDiscardsThePartlyTypedWord()
+    {
+        var (w, seen) = Build();
+
+        Type(w, "wel");        // Wort angefangen
+        w.Invalidate();        // Cursor springt weg
+        Type(w, "t ");
+
+        var completed = Assert.Single(seen);
+        Assert.Equal("t", completed.Word); // nicht "welt"
     }
 
     [Fact]

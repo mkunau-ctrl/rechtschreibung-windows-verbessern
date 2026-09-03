@@ -77,6 +77,7 @@ internal sealed class KeyboardHook : IDisposable
         using var curProcess = System.Diagnostics.Process.GetCurrentProcess();
         using var curModule = curProcess.MainModule!;
         _hookId = SetWindowsHookEx(WH_KEYBOARD_LL, _proc, GetModuleHandle(curModule.ModuleName), 0);
+        DebugLog.Write($"KeyboardHook.Install -> hookId={_hookId} lastError={Marshal.GetLastWin32Error()}");
     }
 
     public void Uninstall()
@@ -121,8 +122,14 @@ internal sealed class KeyboardHook : IDisposable
                     int result = ToUnicode(hookStruct.vkCode, hookStruct.scanCode, keyboardState, sb, sb.Capacity, 0);
                     if (result > 0)
                     {
-                        foreach (char c in sb.ToString())
+                        var text = sb.ToString();
+                        DebugLog.Write($"key vk={hookStruct.vkCode:X2} -> '{text}'");
+                        foreach (char c in text)
                             CharacterTyped?.Invoke(c);
+                    }
+                    else
+                    {
+                        DebugLog.Write($"key vk={hookStruct.vkCode:X2} -> ToUnicode={result}");
                     }
                 }
             }

@@ -66,7 +66,11 @@ internal sealed class TrayApp : ApplicationContext
         _keyboard.EnterPressed += () => Post(OnEnter);
         _keyboard.NavigationKeyPressed += () => Post(_watcher.Invalidate);
         _mouse.ClickDetected += () => Post(_watcher.Invalidate);
-        _watcher.WordCompleted += _controller.HandleWord;
+        _watcher.WordCompleted += w =>
+        {
+            DebugLog.Write($"WordCompleted '{w.Word}' boundary={(w.Boundary == '\n' ? "\\n" : w.Boundary.ToString())} satzanfang={w.Context.IsSentenceStart}");
+            _controller.HandleWord(w);
+        };
 
         _focusTimer = new System.Windows.Forms.Timer { Interval = 1000 };
         _focusTimer.Tick += (_, _) => CheckContextStillValid();
@@ -76,6 +80,7 @@ internal sealed class TrayApp : ApplicationContext
         RegisterHotkeys();
 
         StartLiveCorrection();
+        DebugLog.Write($"TrayApp bereit. Wörterbuch geladen. keyboardHook={_keyboard.IsInstalled} mouseHook={_mouse.IsInstalled}");
 
         _trayIcon.BalloonTipTitle = "Live-Korrektur läuft";
         _trayIcon.BalloonTipText =
@@ -133,12 +138,13 @@ internal sealed class TrayApp : ApplicationContext
     {
         try
         {
+            DebugLog.Write($"Replace delete={cmd.DeleteCount} insert='{cmd.Insert.Replace("\n", "\\n")}'");
             ShowWorking();
             _replacer.Replace(cmd.DeleteCount, cmd.Insert);
         }
-        catch
+        catch (Exception ex)
         {
-            // Feld reagiert nicht wie erwartet — dann bleibt der Text unangetastet.
+            DebugLog.Write($"Replace FAILED: {ex}");
         }
         finally
         {
