@@ -1,0 +1,38 @@
+# Mitgelieferte Standard-Vertipper (falsch=richtig).
+# Deine eigenen Einträge kommen in Dokumente\RechtschreibTrainer\woerterbuch.txt
+# und haben Vorrang. Zeilen mit # sind Kommentare.
+
+# --- aus deinem ersten Mitschnitt (2026-09-03) ---
+cih=ich
+nocg=noch
+scgauen=schauen
+aknn=kann
+richrig=richtig
+auc=auch
+feher=fehler
+veressert=verbessert
+benuzen=benutzen
+eventeull=eventuell
+überhauot=überhaupt
+gepannt=gespannt
+gepannnt=gespannt
+korretur=korrektur
+frae=frage
+
+# --- häufige deutsche Tippfehler ---
+nichr=nicht
+nihct=nicht
+udn=und
+nud=und
+dre=der
+wnen=wenn
+jetz=jetzt
+jezt=jetzt
+wiel=weil
+mti=mit
+ncoh=noch
+shcon=schon
+scohn=schon
+oer=oder
+abre=aber
+auhc=auch

@@ -4,6 +4,12 @@
     <ProjectReference Include="..\RechtschreibTrainer.Core\RechtschreibTrainer.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="standard-vertipper.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>

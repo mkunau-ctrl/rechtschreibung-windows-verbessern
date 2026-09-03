@@ -10,7 +10,13 @@ internal static class Win32
     [DllImport("user32.dll", SetLastError = true)]
     public static extern bool UnregisterHotKey(IntPtr hWnd, int id);
 
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetForegroundWindow();
+
     public const uint MOD_ALT = 0x0001;
     public const uint MOD_CONTROL = 0x0002;
+
     public const uint VK_R = 0x52;
+    public const uint VK_P = 0x50;
+    public const uint VK_Z = 0x5A;
 }

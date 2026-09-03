@@ -1,100 +1,282 @@
+using RechtschreibTrainer.Core;
+
 namespace RechtschreibTrainer;
 
 /// <summary>
-/// Owns the tray icon, the toggle hotkey and the keyboard hook lifecycle.
-/// The hook is installed only between a toggle-on and the matching
-/// toggle-off — there is no always-on capture path.
+/// Trägt Tray-Icon, Hotkeys und den Lebenszyklus der Hooks. Die Live-Korrektur
+/// läuft, solange sie nicht pausiert ist; der Mitschreib-Modus (Strg+Alt+R)
+/// bleibt als separates Opt-in erhalten.
 /// </summary>
 internal sealed class TrayApp : ApplicationContext
 {
-    private const int HotkeyId = 1;
+    private const int HotkeyRecord = 1;
+    private const int HotkeyPause = 2;
+    private const int HotkeyUndo = 3;
 
     private readonly HotkeyForm _hotkeyForm = new();
     private readonly NotifyIcon _trayIcon;
-    private readonly KeyboardHook _hook = new();
-    private readonly RecordingSession _session = new();
-    private readonly string _logFilePath;
+    private readonly ToolStripMenuItem _pauseItem;
+
+    private readonly KeyboardHook _keyboard = new();
+    private readonly MouseHook _mouse = new();
+    private readonly WordWatcher _watcher = new();
+    private readonly Replacer _replacer = new();
+    private readonly RecordingSession _recording = new();
+    private readonly LiveCorrectionController _controller;
+
+    private readonly System.Windows.Forms.Timer _focusTimer;
+
+    private IntPtr _lastForeground;
+    private DateTime _lastActivity = DateTime.Now;
+    private int _correctionCount;
 
     public TrayApp()
     {
-        _logFilePath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-            "RechtschreibTrainer", "keystrokes.log");
+        _ = _hotkeyForm.Handle; // Fenster-Handle sofort erzwingen — dient auch als Marshalling-Ziel
+
+        AppPaths.EnsureDataDir();
+        var dictionary = DictionaryLoader.Load();
+        _controller = new LiveCorrectionController(
+            new OfflineCorrector(dictionary),
+            RunReplacement,
+            record => LearnStore.Append(AppPaths.CorrectionLog, record));
+        _controller.CorrectionApplied += OnCorrectionApplied;
 
         _trayIcon = new NotifyIcon
         {
-            Icon = IconFactory.CreateIcon(recording: false),
+            Icon = IconFactory.Create(TrayState.Ready),
             Visible = true,
-            Text = "Rechtschreib-Trainer (Aufnahme aus)"
+            Text = "Rechtschreib-Trainer — Live-Korrektur aktiv",
         };
 
         var menu = new ContextMenuStrip();
-        menu.Items.Add("Aufnahme umschalten (Strg+Alt+R)", null, (_, _) => ToggleRecording());
+        _pauseItem = new ToolStripMenuItem("Live-Korrektur pausieren (Strg+Alt+P)", null, (_, _) => TogglePause());
+        menu.Items.Add(_pauseItem);
+        menu.Items.Add("Letzte Korrektur rückgängig (Strg+Alt+Z)", null, (_, _) => _controller.Undo());
+        menu.Items.Add(new ToolStripSeparator());
+        menu.Items.Add("Wörterbuch öffnen", null, (_, _) => OpenInEditor(AppPaths.UserDictionary));
+        menu.Items.Add("Mitschreiben umschalten (Strg+Alt+R)", null, (_, _) => ToggleRecording());
         menu.Items.Add("Log-Ordner öffnen", null, (_, _) => OpenLogFolder());
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Beenden", null, (_, _) => ExitApp());
         _trayIcon.ContextMenuStrip = menu;
-        _trayIcon.DoubleClick += (_, _) => ToggleRecording();
 
-        _hook.CharacterTyped += c => { if (_session.IsActive) _session.AppendChar(c); };
-        _hook.BackspacePressed += () => { if (_session.IsActive) _session.AppendBackspace(); };
-        _hook.EnterPressed += () => { if (_session.IsActive) _session.AppendNewline(); };
+        _keyboard.CharacterTyped += c => Post(() => OnChar(c));
+        _keyboard.BackspacePressed += () => Post(OnBackspace);
+        _keyboard.EnterPressed += () => Post(OnEnter);
+        _keyboard.NavigationKeyPressed += () => Post(_watcher.Invalidate);
+        _mouse.ClickDetected += () => Post(_watcher.Invalidate);
+        _watcher.WordCompleted += _controller.HandleWord;
 
-        _hotkeyForm.HotkeyPressed += ToggleRecording;
-        _hotkeyForm.HandleCreated += (_, _) =>
-        {
-            if (!Win32.RegisterHotKey(_hotkeyForm.Handle, HotkeyId, Win32.MOD_CONTROL | Win32.MOD_ALT, Win32.VK_R))
-            {
-                _trayIcon.BalloonTipTitle = "Hotkey konnte nicht registriert werden";
-                _trayIcon.BalloonTipText = "Strg+Alt+R ist evtl. von einem anderen Programm belegt. Umschalten geht weiterhin über das Tray-Menü.";
-                _trayIcon.ShowBalloonTip(4000);
-            }
-        };
+        _focusTimer = new System.Windows.Forms.Timer { Interval = 1000 };
+        _focusTimer.Tick += (_, _) => CheckContextStillValid();
+        _focusTimer.Start();
 
-        // Force window handle creation so HandleCreated fires and RegisterHotKey has a target.
-        _ = _hotkeyForm.Handle;
+        _hotkeyForm.HotkeyPressed += OnHotkey;
+        RegisterHotkeys();
+
+        StartLiveCorrection();
+
+        _trayIcon.BalloonTipTitle = "Live-Korrektur läuft";
+        _trayIcon.BalloonTipText =
+            "Bekannte Vertipper werden beim Tippen sofort korrigiert. " +
+            "Strg+Alt+P pausiert (z. B. vor Passwörtern), Strg+Alt+Z macht rückgängig.";
+        _trayIcon.ShowBalloonTip(4000);
     }
 
-    private void ToggleRecording()
+    private void Post(Action action)
     {
-        if (_session.IsActive)
-        {
-            _hook.Uninstall();
-            var (_, length) = _session.StopAndFlush(_logFilePath);
+        if (_hotkeyForm.IsHandleCreated)
+            _hotkeyForm.BeginInvoke(action);
+    }
 
-            _trayIcon.Icon = IconFactory.CreateIcon(recording: false);
-            _trayIcon.Text = "Rechtschreib-Trainer (Aufnahme aus)";
-            _trayIcon.BalloonTipTitle = "Aufnahme gestoppt";
-            _trayIcon.BalloonTipText = $"{length} Zeichen gespeichert.";
-            _trayIcon.ShowBalloonTip(2500);
+    // --- Tasteneingaben (bereits auf dem UI-Thread) ---
+
+    private void OnChar(char c)
+    {
+        _lastActivity = DateTime.Now;
+        _watcher.OnChar(c);
+        if (_recording.IsActive) _recording.AppendChar(c);
+    }
+
+    private void OnBackspace()
+    {
+        _lastActivity = DateTime.Now;
+        _watcher.OnBackspace();
+        if (_recording.IsActive) _recording.AppendBackspace();
+    }
+
+    private void OnEnter()
+    {
+        _lastActivity = DateTime.Now;
+        _watcher.OnEnter();
+        if (_recording.IsActive) _recording.AppendNewline();
+    }
+
+    private void CheckContextStillValid()
+    {
+        var current = Win32.GetForegroundWindow();
+        if (current != _lastForeground)
+        {
+            _lastForeground = current;
+            _watcher.Invalidate();
+        }
+        else if ((DateTime.Now - _lastActivity).TotalSeconds > 4)
+        {
+            _watcher.Invalidate();
+        }
+    }
+
+    // --- Ersetzen ---
+
+    private void RunReplacement(ReplacementCommand cmd)
+    {
+        try
+        {
+            ShowWorking();
+            _replacer.Replace(cmd.DeleteCount, cmd.Insert);
+        }
+        catch
+        {
+            // Feld reagiert nicht wie erwartet — dann bleibt der Text unangetastet.
+        }
+        finally
+        {
+            RefreshIcon();
+        }
+    }
+
+    private void OnCorrectionApplied(CorrectionResult result)
+    {
+        _correctionCount++;
+        _trayIcon.Text = $"Rechtschreib-Trainer — {_correctionCount} Korrekturen";
+    }
+
+    // --- Hotkeys ---
+
+    private void RegisterHotkeys()
+    {
+        Win32.RegisterHotKey(_hotkeyForm.Handle, HotkeyRecord, Win32.MOD_CONTROL | Win32.MOD_ALT, Win32.VK_R);
+        Win32.RegisterHotKey(_hotkeyForm.Handle, HotkeyUndo, Win32.MOD_CONTROL | Win32.MOD_ALT, Win32.VK_Z);
+        if (!Win32.RegisterHotKey(_hotkeyForm.Handle, HotkeyPause, Win32.MOD_CONTROL | Win32.MOD_ALT, Win32.VK_P))
+        {
+            _trayIcon.BalloonTipTitle = "Hotkey Strg+Alt+P belegt";
+            _trayIcon.BalloonTipText = "Pausieren geht weiterhin über das Tray-Menü.";
+            _trayIcon.ShowBalloonTip(4000);
+        }
+    }
+
+    private void OnHotkey(int id)
+    {
+        switch (id)
+        {
+            case HotkeyRecord: ToggleRecording(); break;
+            case HotkeyPause: TogglePause(); break;
+            case HotkeyUndo: _controller.Undo(); break;
+        }
+    }
+
+    // --- Live-Korrektur an/aus ---
+
+    private void StartLiveCorrection()
+    {
+        _keyboard.Install();
+        _mouse.Install();
+        _lastForeground = Win32.GetForegroundWindow();
+    }
+
+    private void TogglePause()
+    {
+        _controller.Paused = !_controller.Paused;
+
+        if (_controller.Paused)
+        {
+            _pauseItem.Text = "Live-Korrektur fortsetzen (Strg+Alt+P)";
+            if (!_recording.IsActive)
+            {
+                _keyboard.Uninstall();
+                _mouse.Uninstall();
+            }
+            Notify("Live-Korrektur pausiert", "Es wird gerade nichts korrigiert und nichts mitgelesen.");
         }
         else
         {
-            _session.Start();
-            _hook.Install();
-
-            _trayIcon.Icon = IconFactory.CreateIcon(recording: true);
-            _trayIcon.Text = "Rechtschreib-Trainer (Aufnahme AN)";
-            _trayIcon.BalloonTipTitle = "Aufnahme gestartet";
-            _trayIcon.BalloonTipText = "Tippe normal weiter. Keine Passwörter eingeben, solange die Aufnahme läuft — Strg+Alt+R zum Stoppen.";
-            _trayIcon.ShowBalloonTip(2500);
+            _pauseItem.Text = "Live-Korrektur pausieren (Strg+Alt+P)";
+            StartLiveCorrection();
+            _watcher.Invalidate();
+            Notify("Live-Korrektur aktiv", "Bekannte Vertipper werden wieder sofort korrigiert.");
         }
+
+        RefreshIcon();
     }
 
-    private void OpenLogFolder()
+    // --- Mitschreib-Modus ---
+
+    private void ToggleRecording()
     {
-        var dir = Path.GetDirectoryName(_logFilePath)!;
-        Directory.CreateDirectory(dir);
-        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(dir) { UseShellExecute = true });
+        if (_recording.IsActive)
+        {
+            var (_, length) = _recording.StopAndFlush(AppPaths.KeystrokeLog);
+            if (_controller.Paused)
+            {
+                _keyboard.Uninstall();
+                _mouse.Uninstall();
+            }
+            Notify("Mitschreiben gestoppt", $"{length} Zeichen in keystrokes.log gespeichert.");
+        }
+        else
+        {
+            _recording.Start();
+            _keyboard.Install();
+            Notify("Mitschreiben gestartet",
+                "Alles Getippte landet in keystrokes.log — keine Passwörter eingeben. Strg+Alt+R zum Stoppen.");
+        }
+
+        RefreshIcon();
+    }
+
+    // --- Icon / Benachrichtigung ---
+
+    private void ShowWorking() => _trayIcon.Icon = IconFactory.Create(TrayState.Working);
+
+    private void RefreshIcon()
+    {
+        var state = _recording.IsActive ? TrayState.Recording
+            : _controller.Paused ? TrayState.Paused
+            : TrayState.Ready;
+        _trayIcon.Icon = IconFactory.Create(state);
+    }
+
+    private void Notify(string title, string text)
+    {
+        _trayIcon.BalloonTipTitle = title;
+        _trayIcon.BalloonTipText = text;
+        _trayIcon.ShowBalloonTip(2500);
+    }
+
+    private static void OpenInEditor(string path)
+    {
+        if (!File.Exists(path)) File.WriteAllText(path, "");
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("notepad.exe", $"\"{path}\"") { UseShellExecute = true });
+    }
+
+    private static void OpenLogFolder()
+    {
+        AppPaths.EnsureDataDir();
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(AppPaths.DataDir) { UseShellExecute = true });
     }
 
     private void ExitApp()
     {
-        if (_session.IsActive)
-            _session.StopAndFlush(_logFilePath);
+        if (_recording.IsActive)
+            _recording.StopAndFlush(AppPaths.KeystrokeLog);
 
-        _hook.Dispose();
-        Win32.UnregisterHotKey(_hotkeyForm.Handle, HotkeyId);
+        _focusTimer.Stop();
+        _keyboard.Dispose();
+        _mouse.Dispose();
+        Win32.UnregisterHotKey(_hotkeyForm.Handle, HotkeyRecord);
+        Win32.UnregisterHotKey(_hotkeyForm.Handle, HotkeyPause);
+        Win32.UnregisterHotKey(_hotkeyForm.Handle, HotkeyUndo);
         _trayIcon.Visible = false;
         _trayIcon.Dispose();
         _hotkeyForm.Close();
