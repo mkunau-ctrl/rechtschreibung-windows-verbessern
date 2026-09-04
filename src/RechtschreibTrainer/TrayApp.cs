@@ -4,7 +4,7 @@ namespace RechtschreibTrainer;
 
 /// <summary>
 /// Trägt Tray-Icon, Hotkeys und den Lebenszyklus der Hooks. Die Live-Korrektur
-/// läuft, solange sie nicht pausiert ist; der Mitschreib-Modus (Strg+Alt+R)
+/// läuft, solange sie nicht pausiert ist; der Mitschreib-Modus (F9)
 /// bleibt als separates Opt-in erhalten.
 /// </summary>
 internal sealed class TrayApp : ApplicationContext
@@ -44,18 +44,18 @@ internal sealed class TrayApp : ApplicationContext
 
         _trayIcon = new NotifyIcon
         {
-            Icon = IconFactory.Create(TrayState.Ready),
+            Icon = IconFactory.Create(TrayState.Ready, recording: false),
             Visible = true,
             Text = "Rechtschreib-Trainer — Live-Korrektur aktiv",
         };
 
         var menu = new ContextMenuStrip();
-        _pauseItem = new ToolStripMenuItem("Live-Korrektur pausieren (Strg+Alt+P)", null, (_, _) => TogglePause());
+        _pauseItem = new ToolStripMenuItem("Live-Korrektur pausieren (F11)", null, (_, _) => TogglePause());
         menu.Items.Add(_pauseItem);
-        menu.Items.Add("Letzte Korrektur rückgängig (Strg+Alt+Z)", null, (_, _) => _controller.Undo());
+        menu.Items.Add("Letzte Korrektur rückgängig (F10)", null, (_, _) => _controller.Undo());
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Wörterbuch öffnen", null, (_, _) => OpenInEditor(AppPaths.UserDictionary));
-        menu.Items.Add("Mitschreiben umschalten (Strg+Alt+R)", null, (_, _) => ToggleRecording());
+        menu.Items.Add("Mitschreiben umschalten (F9)", null, (_, _) => ToggleRecording());
         menu.Items.Add("Log-Ordner öffnen", null, (_, _) => OpenLogFolder());
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Beenden", null, (_, _) => ExitApp());
@@ -85,7 +85,7 @@ internal sealed class TrayApp : ApplicationContext
         _trayIcon.BalloonTipTitle = "Live-Korrektur läuft";
         _trayIcon.BalloonTipText =
             "Bekannte Vertipper werden beim Tippen sofort korrigiert. " +
-            "Strg+Alt+P pausiert (z. B. vor Passwörtern), Strg+Alt+Z macht rückgängig.";
+            "F11 pausiert (z. B. vor Passwörtern), F10 macht rückgängig.";
         _trayIcon.ShowBalloonTip(4000);
     }
 
@@ -162,15 +162,21 @@ internal sealed class TrayApp : ApplicationContext
 
     private void RegisterHotkeys()
     {
-        Win32.RegisterHotKey(_hotkeyForm.Handle, HotkeyRecord, Win32.MOD_CONTROL | Win32.MOD_ALT, Win32.VK_R);
-        Win32.RegisterHotKey(_hotkeyForm.Handle, HotkeyUndo, Win32.MOD_CONTROL | Win32.MOD_ALT, Win32.VK_Z);
-        if (!Win32.RegisterHotKey(_hotkeyForm.Handle, HotkeyPause, Win32.MOD_CONTROL | Win32.MOD_ALT, Win32.VK_P))
+        var failed = new List<string>();
+
+        if (!Register(HotkeyRecord, Win32.VK_F9)) failed.Add("F9");
+        if (!Register(HotkeyUndo, Win32.VK_F10)) failed.Add("F10");
+        if (!Register(HotkeyPause, Win32.VK_F11)) failed.Add("F11");
+
+        if (failed.Count > 0)
         {
-            _trayIcon.BalloonTipTitle = "Hotkey Strg+Alt+P belegt";
-            _trayIcon.BalloonTipText = "Pausieren geht weiterhin über das Tray-Menü.";
-            _trayIcon.ShowBalloonTip(4000);
+            Notify($"Hotkey belegt: {string.Join(", ", failed)}",
+                "Ein anderes Programm hält die Taste. Alles geht weiterhin über das Tray-Menü.");
         }
     }
+
+    private bool Register(int id, uint vk) =>
+        Win32.RegisterHotKey(_hotkeyForm.Handle, id, Win32.MOD_NOREPEAT, vk);
 
     private void OnHotkey(int id)
     {
@@ -197,7 +203,7 @@ internal sealed class TrayApp : ApplicationContext
 
         if (_controller.Paused)
         {
-            _pauseItem.Text = "Live-Korrektur fortsetzen (Strg+Alt+P)";
+            _pauseItem.Text = "Live-Korrektur fortsetzen (F11)";
             if (!_recording.IsActive)
             {
                 _keyboard.Uninstall();
@@ -207,7 +213,7 @@ internal sealed class TrayApp : ApplicationContext
         }
         else
         {
-            _pauseItem.Text = "Live-Korrektur pausieren (Strg+Alt+P)";
+            _pauseItem.Text = "Live-Korrektur pausieren (F11)";
             StartLiveCorrection();
             _watcher.Invalidate();
             Notify("Live-Korrektur aktiv", "Bekannte Vertipper werden wieder sofort korrigiert.");
@@ -235,7 +241,7 @@ internal sealed class TrayApp : ApplicationContext
             _recording.Start();
             _keyboard.Install();
             Notify("Mitschreiben gestartet",
-                "Alles Getippte landet in keystrokes.log — keine Passwörter eingeben. Strg+Alt+R zum Stoppen.");
+                "Alles Getippte landet in keystrokes.log — keine Passwörter eingeben. F9 zum Stoppen.");
         }
 
         RefreshIcon();
@@ -243,14 +249,13 @@ internal sealed class TrayApp : ApplicationContext
 
     // --- Icon / Benachrichtigung ---
 
-    private void ShowWorking() => _trayIcon.Icon = IconFactory.Create(TrayState.Working);
+    private void ShowWorking() =>
+        _trayIcon.Icon = IconFactory.Create(TrayState.Working, _recording.IsActive);
 
     private void RefreshIcon()
     {
-        var state = _recording.IsActive ? TrayState.Recording
-            : _controller.Paused ? TrayState.Paused
-            : TrayState.Ready;
-        _trayIcon.Icon = IconFactory.Create(state);
+        var state = _controller.Paused ? TrayState.Paused : TrayState.Ready;
+        _trayIcon.Icon = IconFactory.Create(state, _recording.IsActive);
     }
 
     private void Notify(string title, string text)

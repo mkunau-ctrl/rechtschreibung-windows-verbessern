@@ -16,7 +16,10 @@ internal static class Win32
     public const uint MOD_ALT = 0x0001;
     public const uint MOD_CONTROL = 0x0002;
 
-    public const uint VK_R = 0x52;
-    public const uint VK_P = 0x50;
-    public const uint VK_Z = 0x5A;
+    /// <summary>Verhindert, dass Gedrückthalten den Hotkey mehrfach auslöst.</summary>
+    public const uint MOD_NOREPEAT = 0x4000;
+
+    public const uint VK_F9 = 0x78;
+    public const uint VK_F10 = 0x79;
+    public const uint VK_F11 = 0x7A;
 }
