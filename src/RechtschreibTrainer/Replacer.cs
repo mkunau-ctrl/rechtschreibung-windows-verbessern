@@ -16,10 +16,26 @@ internal sealed class Replacer
         public InputUnion u;
     }
 
+    // Das Union MUSS alle drei Varianten enthalten: SendInput prüft cbSize
+    // gegen die Größe von MOUSEINPUT (der größten Variante) und verwirft die
+    // Eingabe kommentarlos, wenn sie nicht passt.
     [StructLayout(LayoutKind.Explicit)]
     private struct InputUnion
     {
+        [FieldOffset(0)] public MOUSEINPUT mi;
         [FieldOffset(0)] public KEYBDINPUT ki;
+        [FieldOffset(0)] public HARDWAREINPUT hi;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MOUSEINPUT
+    {
+        public int dx;
+        public int dy;
+        public uint mouseData;
+        public uint dwFlags;
+        public uint time;
+        public IntPtr dwExtraInfo;
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -32,6 +48,14 @@ internal sealed class Replacer
         public IntPtr dwExtraInfo;
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    private struct HARDWAREINPUT
+    {
+        public uint uMsg;
+        public ushort wParamL;
+        public ushort wParamH;
+    }
+
     private const uint INPUT_KEYBOARD = 1;
     private const uint KEYEVENTF_KEYUP = 0x0002;
     private const uint KEYEVENTF_UNICODE = 0x0004;
@@ -39,6 +63,9 @@ internal sealed class Replacer
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
+
+    /// <summary>Größe, die an SendInput als cbSize geht — muss der Win32-Definition entsprechen.</summary>
+    public static int InputStructSize => Marshal.SizeOf<INPUT>();
 
     /// <summary>Löscht <paramref name="deleteCount"/> Zeichen und tippt <paramref name="text"/>.</summary>
     public void Replace(int deleteCount, string text)
@@ -58,7 +85,13 @@ internal sealed class Replacer
         }
 
         var arr = inputs.ToArray();
-        SendInput((uint)arr.Length, arr, Marshal.SizeOf<INPUT>());
+        var sent = SendInput((uint)arr.Length, arr, Marshal.SizeOf<INPUT>());
+        if (sent != arr.Length)
+        {
+            DebugLog.Write(
+                $"SendInput unvollständig: {sent}/{arr.Length} akzeptiert, " +
+                $"cbSize={Marshal.SizeOf<INPUT>()} lastError={Marshal.GetLastWin32Error()}");
+        }
     }
 
     private static INPUT Key(ushort vk, ushort scan, bool up, uint extraFlags = 0) => new()

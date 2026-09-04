@@ -13,6 +13,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{FFA5AF7D
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RechtschreibTrainer.Core.Tests", "tests\RechtschreibTrainer.Core.Tests\RechtschreibTrainer.Core.Tests.csproj", "{3BAA8C11-4D9B-48DD-85EA-AE6C55E08070}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RechtschreibTrainer.Tests", "tests\RechtschreibTrainer.Tests\RechtschreibTrainer.Tests.csproj", "{B4AF90B3-F826-4C69-8AAB-AD8ABBA696FB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -34,10 +36,15 @@ Global
 		{3BAA8C11-4D9B-48DD-85EA-AE6C55E08070}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3BAA8C11-4D9B-48DD-85EA-AE6C55E08070}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3BAA8C11-4D9B-48DD-85EA-AE6C55E08070}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B4AF90B3-F826-4C69-8AAB-AD8ABBA696FB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B4AF90B3-F826-4C69-8AAB-AD8ABBA696FB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B4AF90B3-F826-4C69-8AAB-AD8ABBA696FB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B4AF90B3-F826-4C69-8AAB-AD8ABBA696FB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{09849942-388B-4070-AC09-7A99353F5B34} = {D8AF08DA-F05F-41E5-840E-55B57606EB74}
 		{2FED6596-5912-48D3-9D3B-604212BAB910} = {D8AF08DA-F05F-41E5-840E-55B57606EB74}
 		{3BAA8C11-4D9B-48DD-85EA-AE6C55E08070} = {FFA5AF7D-E90B-412C-A236-D074E021ED71}
+		{B4AF90B3-F826-4C69-8AAB-AD8ABBA696FB} = {FFA5AF7D-E90B-412C-A236-D074E021ED71}
 	EndGlobalSection
 EndGlobal

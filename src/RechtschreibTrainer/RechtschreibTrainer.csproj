@@ -5,6 +5,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="RechtschreibTrainer.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Update="standard-vertipper.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
