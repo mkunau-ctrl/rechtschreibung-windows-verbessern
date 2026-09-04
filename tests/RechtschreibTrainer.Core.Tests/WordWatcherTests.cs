@@ -93,6 +93,32 @@ public class WordWatcherTests
     }
 
     [Fact]
+    public void TheWordRightAfterAnInterruptionMayBeAFragment()
+    {
+        // Nach Klick/Fokuswechsel kann der Cursor mitten in einem Wort stehen:
+        // was danach getippt wird, ist vielleicht nur ein Bruchstück. Raten ist
+        // dann zu gefährlich - nur exakte Treffer sind noch erlaubt.
+        var (w, seen) = Build();
+
+        w.Invalidate();
+        Type(w, "toniert ");
+        Type(w, "danach ");
+
+        Assert.False(seen[0].Context.AllowSpellGuess);
+        Assert.True(seen[1].Context.AllowSpellGuess);
+    }
+
+    [Fact]
+    public void UninterruptedTypingAllowsGuessing()
+    {
+        var (w, seen) = Build();
+
+        Type(w, "vielleciht ");
+
+        Assert.True(seen[0].Context.AllowSpellGuess);
+    }
+
+    [Fact]
     public void InvalidateDiscardsThePartlyTypedWord()
     {
         var (w, seen) = Build();

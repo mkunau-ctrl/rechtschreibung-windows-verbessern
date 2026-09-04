@@ -31,4 +31,21 @@ internal static class DictionaryLoader
 
         return CorrectionDictionary.FromLines(lines);
     }
+
+    /// <summary>
+    /// Lädt die große deutsche Wortliste. Fehlen die Datendateien, läuft das
+    /// Programm ohne Rechtschreibprüfung weiter — nur mit den Vertipper-Listen.
+    /// </summary>
+    public static SpellCorrector? LoadSpelling()
+    {
+        if (!File.Exists(AppPaths.WordListFile))
+            return null;
+
+        var frequencies = File.Exists(AppPaths.FrequencyFile)
+            ? File.ReadLines(AppPaths.FrequencyFile)
+            : [];
+
+        var list = WordList.FromLines(File.ReadLines(AppPaths.WordListFile), frequencies);
+        return new SpellCorrector(list, SpellSettings.Default);
+    }
 }

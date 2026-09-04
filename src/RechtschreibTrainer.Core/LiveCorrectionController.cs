@@ -16,6 +16,7 @@ public sealed class LiveCorrectionController
     private readonly Action<CorrectionRecord> _learn;
 
     private ReplacementCommand? _lastUndo;
+    private string? _lastOriginalWord;
 
     public LiveCorrectionController(
         OfflineCorrector corrector,
@@ -31,6 +32,12 @@ public sealed class LiveCorrectionController
 
     /// <summary>Wird nach jeder angewandten Korrektur gemeldet (für Benachrichtigung).</summary>
     public event Action<CorrectionResult>? CorrectionApplied;
+
+    /// <summary>
+    /// Der Nutzer hat eine Korrektur zurückgenommen. Das Wort gehört auf die
+    /// „nie anfassen"-Liste, damit derselbe Fehlgriff nicht wiederkommt.
+    /// </summary>
+    public event Action<string>? CorrectionRejected;
 
     public void HandleWord(WordCompleted word)
     {
@@ -48,6 +55,7 @@ public sealed class LiveCorrectionController
 
         _replace(new ReplacementCommand(deleteCount, insert));
         _lastUndo = new ReplacementCommand(insert.Length, originalInsert);
+        _lastOriginalWord = word.Word;
         _learn(new CorrectionRecord(DateTime.Now, word.Word, result.Corrected, result.Source));
         CorrectionApplied?.Invoke(result);
     }
@@ -59,5 +67,11 @@ public sealed class LiveCorrectionController
 
         _replace(_lastUndo);
         _lastUndo = null;
+
+        if (_lastOriginalWord is { } rejected)
+        {
+            CorrectionRejected?.Invoke(rejected);
+            _lastOriginalWord = null;
+        }
     }
 }

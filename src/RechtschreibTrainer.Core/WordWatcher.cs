@@ -19,6 +19,10 @@ public sealed class WordWatcher
     private readonly StringBuilder _word = new();
     private bool _sentenceStart = true;
 
+    // Nach einer Unterbrechung kann der Cursor mitten in einem bestehenden Wort
+    // stehen — das nächste fertige Wort ist dann womöglich nur ein Bruchstück.
+    private bool _mayBeFragment;
+
     public event Action<WordCompleted>? WordCompleted;
 
     private static bool IsWordChar(char c) => char.IsLetterOrDigit(c) || c is '-' or '\'';
@@ -60,6 +64,7 @@ public sealed class WordWatcher
     {
         _word.Clear();
         _sentenceStart = false;
+        _mayBeFragment = true;
     }
 
     private bool Flush(char boundary)
@@ -68,10 +73,15 @@ public sealed class WordWatcher
         if (emit)
         {
             WordCompleted?.Invoke(new WordCompleted(
-                _word.ToString(), boundary, new WordContext(_sentenceStart)));
+                _word.ToString(), boundary,
+                new WordContext(_sentenceStart, AllowSpellGuess: !_mayBeFragment)));
         }
 
         _word.Clear();
+
+        // Ab der nächsten Wortgrenze steht der Cursor wieder nachweislich dort,
+        // wo getippt wurde.
+        _mayBeFragment = false;
         return emit;
     }
 }

@@ -23,6 +23,7 @@ internal sealed class TrayApp : ApplicationContext
     private readonly Replacer _replacer = new();
     private readonly RecordingSession _recording = new();
     private readonly LiveCorrectionController _controller;
+    private readonly NeverCorrectStore _neverCorrect;
 
     private readonly System.Windows.Forms.Timer _focusTimer;
 
@@ -36,11 +37,15 @@ internal sealed class TrayApp : ApplicationContext
 
         AppPaths.EnsureDataDir();
         var dictionary = DictionaryLoader.Load();
+        var spelling = DictionaryLoader.LoadSpelling();
+        _neverCorrect = new NeverCorrectStore(AppPaths.NeverCorrectList);
+
         _controller = new LiveCorrectionController(
-            new OfflineCorrector(dictionary),
+            new OfflineCorrector(dictionary, spelling, _neverCorrect.Words),
             RunReplacement,
             record => LearnStore.Append(AppPaths.CorrectionLog, record));
         _controller.CorrectionApplied += OnCorrectionApplied;
+        _controller.CorrectionRejected += OnCorrectionRejected;
 
         _trayIcon = new NotifyIcon
         {
@@ -156,6 +161,13 @@ internal sealed class TrayApp : ApplicationContext
     {
         _correctionCount++;
         _trayIcon.Text = $"Rechtschreib-Trainer — {_correctionCount} Korrekturen";
+    }
+
+    private void OnCorrectionRejected(string word)
+    {
+        _neverCorrect.Add(word);
+        DebugLog.Write($"zurückgewiesen: '{word}' -> nie-korrigieren.txt");
+        Notify("Zurückgenommen", $"„{word}\" wird ab jetzt nicht mehr korrigiert.");
     }
 
     // --- Hotkeys ---

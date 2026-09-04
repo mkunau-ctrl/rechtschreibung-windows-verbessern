@@ -12,8 +12,17 @@ internal static class AppPaths
     public static string CorrectionLog => Path.Combine(DataDir, "korrekturen.jsonl");
     public static string UserDictionary => Path.Combine(DataDir, "woerterbuch.txt");
 
+    /// <summary>Wörter, die der Nutzer per F10 zurückgewiesen hat.</summary>
+    public static string NeverCorrectList => Path.Combine(DataDir, "nie-korrigieren.txt");
+
     /// <summary>Mitgelieferte Standardliste, liegt neben der .exe.</summary>
     public static string BundledDictionary => Path.Combine(AppContext.BaseDirectory, "standard-vertipper.txt");
+
+    /// <summary>Deutsche Wortformen, neben der .exe im Unterordner data.</summary>
+    public static string WordListFile => Path.Combine(AppContext.BaseDirectory, "data", "woerter.txt");
+
+    /// <summary>Worthäufigkeiten zum Sortieren der Kandidaten.</summary>
+    public static string FrequencyFile => Path.Combine(AppContext.BaseDirectory, "data", "haeufigkeit.txt");
 
     public static void EnsureDataDir() => Directory.CreateDirectory(DataDir);
 }

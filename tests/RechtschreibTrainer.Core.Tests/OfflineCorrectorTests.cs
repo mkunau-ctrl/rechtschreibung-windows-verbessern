@@ -53,6 +53,74 @@ public class OfflineCorrectorTests
         Assert.False(result.HasCorrection);
     }
 
+    private static OfflineCorrector WithSpelling(string[] dict, params string[] knownWords)
+        => new(CorrectionDictionary.FromLines(dict),
+               new SpellCorrector(WordList.FromLines(knownWords, []), SpellSettings.Default));
+
+    [Fact]
+    public void FallsBackToTheSpellCheckerWhenNoEntryOrRuleApplies()
+    {
+        var result = WithSpelling([], "vielleicht")
+            .Correct("vielleciht", new WordContext(IsSentenceStart: false));
+
+        Assert.Equal("vielleicht", result.Corrected);
+        Assert.Equal(CorrectionSource.Spelling, result.Source);
+    }
+
+    [Fact]
+    public void DoesNotGuessWhenTheWordMayBeAFragment()
+    {
+        var result = WithSpelling([], "vielleicht")
+            .Correct("vielleciht", new WordContext(IsSentenceStart: false, AllowSpellGuess: false));
+
+        Assert.False(result.HasCorrection);
+    }
+
+    [Fact]
+    public void StillUsesTheDictionaryWhenGuessingIsOff()
+    {
+        // Ein exakter Wörterbuch-Treffer ist auch auf einem Bruchstück sicher.
+        var result = WithSpelling(["cih=ich"], "ich")
+            .Correct("cih", new WordContext(IsSentenceStart: false, AllowSpellGuess: false));
+
+        Assert.Equal("ich", result.Corrected);
+    }
+
+    [Fact]
+    public void PersonalDictionaryWinsOverTheSpellChecker()
+    {
+        // Der Nutzer hat das letzte Wort: sein Eintrag schlägt jede Statistik.
+        var result = WithSpelling(["vielleciht=vielleicht!"], "vielleicht")
+            .Correct("vielleciht", new WordContext(IsSentenceStart: false));
+
+        Assert.Equal("vielleicht!", result.Corrected);
+        Assert.Equal(CorrectionSource.Dictionary, result.Source);
+    }
+
+    [Fact]
+    public void LeavesAWordTheSpellCheckerKnowsAlone()
+    {
+        var result = WithSpelling([], "Haus")
+            .Correct("Haus", new WordContext(IsSentenceStart: false));
+
+        Assert.False(result.HasCorrection);
+    }
+
+
+    [Fact]
+    public void NeverTouchesAWordOnTheNeverCorrectList()
+    {
+        // F10 hat dieses Wort schon einmal zurückgenommen — nie wieder anfassen.
+        var corrector = new OfflineCorrector(
+            CorrectionDictionary.FromLines(["kunau=Kuna"]),
+            new SpellCorrector(WordList.FromLines(["Kuna"], []), SpellSettings.Default),
+            neverCorrect: new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "kunau" });
+
+        var result = corrector.Correct("kunau", new WordContext(IsSentenceStart: false));
+
+        Assert.False(result.HasCorrection);
+    }
+
     [Fact]
     public void CombinesDictionaryFixWithSentenceStartCapitalization()
     {

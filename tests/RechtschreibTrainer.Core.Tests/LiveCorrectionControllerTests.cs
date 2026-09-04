@@ -83,6 +83,31 @@ public class LiveCorrectionControllerTests
     }
 
     [Fact]
+    public void UndoReportsTheWordSoItIsNeverCorrectedAgain()
+    {
+        var c = Build(out _, out _, "kunau=Kuna");
+        var rejected = new List<string>();
+        c.CorrectionRejected += rejected.Add;
+
+        c.HandleWord(Word("kunau"));
+        c.Undo();
+
+        Assert.Equal(["kunau"], rejected);
+    }
+
+    [Fact]
+    public void ReportsNothingRejectedWhenThereWasNoCorrection()
+    {
+        var c = Build(out _, out _, "cih=ich");
+        var rejected = new List<string>();
+        c.CorrectionRejected += rejected.Add;
+
+        c.Undo();
+
+        Assert.Empty(rejected);
+    }
+
+    [Fact]
     public void UndoDoesNothingWhenNothingWasReplaced()
     {
         var c = Build(out var reps, out _, "cih=ich");
