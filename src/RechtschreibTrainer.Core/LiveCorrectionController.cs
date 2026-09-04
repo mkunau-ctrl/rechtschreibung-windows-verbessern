@@ -39,19 +39,32 @@ public sealed class LiveCorrectionController
     /// </summary>
     public event Action<string>? CorrectionRejected;
 
-    public void HandleWord(WordCompleted word)
+    /// <param name="word">Das fertig getippte Wort samt Grenzzeichen und Kontext.</param>
+    /// <param name="typedSince">
+    /// Zeichen, die der Nutzer seit der Wortgrenze schon getippt hat. Sie stehen
+    /// auf dem Bildschirm zwischen Cursor und zu korrigierendem Wort, müssen
+    /// also mitgelöscht und danach wieder mitgetippt werden. Ohne das fressen
+    /// die Rücktasten bei schnellem Tippen das nächste Wort an.
+    /// </param>
+    public void HandleWord(WordCompleted word, string typedSince = "")
     {
         if (Paused)
+            return;
+
+        // Nach Enter steht der Zeilenumbruch zwischen Cursor und Wort. Ihn
+        // mitzulöschen und neu zu tippen würde in Chat-Fenstern die Nachricht
+        // ein zweites Mal abschicken — also gar nicht anfassen.
+        if (word.Boundary == '\n')
             return;
 
         var result = _corrector.Correct(word.Word, word.Context);
         if (!result.HasCorrection)
             return;
 
-        var keepsBoundary = word.Boundary == '\n';
-        var deleteCount = keepsBoundary ? word.Word.Length : word.Word.Length + 1;
-        var insert = keepsBoundary ? result.Corrected : result.Corrected + word.Boundary;
-        var originalInsert = keepsBoundary ? word.Word : word.Word + word.Boundary;
+        var tail = word.Boundary + typedSince;
+        var deleteCount = word.Word.Length + tail.Length;
+        var insert = result.Corrected + tail;
+        var originalInsert = word.Word + tail;
 
         _replace(new ReplacementCommand(deleteCount, insert));
         _lastUndo = new ReplacementCommand(insert.Length, originalInsert);

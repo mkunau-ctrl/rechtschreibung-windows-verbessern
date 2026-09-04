@@ -1,5 +1,57 @@
 # Projekt-Log — Rechtschreib-Trainer (Windows)
 
+## 2026-09-05 – Phase 1: Wettlauf beim Ersetzen behoben, Passwortfelder ausgespart
+
+**Was:** Drei Änderungen am Ersetz-Verhalten.
+
+1. **Nachgetippte Zeichen werden mitgezählt.** `LiveCorrectionController.HandleWord`
+   nimmt jetzt einen zweiten Parameter `typedSince`: die Zeichen, die der
+   Nutzer seit der Wortgrenze schon getippt hat. Sie stehen auf dem Bildschirm
+   zwischen Cursor und zu korrigierendem Wort und werden mitgelöscht und
+   danach wieder mitgetippt. `TrayApp` sammelt sie in `_typedSinceWord`.
+2. **Nach Enter wird nicht mehr korrigiert.** Bisher wurden `word.Length`
+   Zeichen gelöscht, obwohl der Zeilenumbruch dazwischenstand — das löschte
+   den Umbruch plus einen Teil des Wortes und schrieb Müll. Ihn stattdessen
+   mitzulöschen und neu zu tippen ist auch keine Option: In Chat-Fenstern
+   verschickt das die Nachricht ein zweites Mal.
+3. **Passwortfelder werden erkannt** (`Win32.FocusedFieldIsPassword`): In
+   einem Edit-Steuerelement mit dem Stil `ES_PASSWORD` wird weder korrigiert
+   noch mitgeschrieben.
+
+**Warum:** Die Messung in `debug.log` hatte gezeigt, dass die alte
+Ersetz-Verzögerung von 130 ms unter dem realen Tastenabstand des Nutzers
+(Median 188 ms) lag.
+
+**Entscheidungen:**
+- **Nicht einfach länger warten.** Das war der ursprüngliche Plan, ist aber
+  falsch: Bei durchgehendem Tippen gibt es überhaupt keine Pause. Ein höherer
+  Schwellwert hätte dazu geführt, dass Korrekturen ganz ausbleiben oder erst
+  Wörter später kommen. Stattdessen wird jetzt **gar nicht** gewartet (Takt
+  25 ms statt 40 ms) und der Versatz sauber verrechnet. Das ist gleichzeitig
+  schneller *und* sicherer.
+- **Nach Enter lieber nichts tun** als etwas kaputt zu machen — entspricht dem
+  Grundsatz „Präzision vor Trefferquote".
+- **Passwortfeld-Erkennung wird bewusst als schwache Zusatzsicherung
+  dokumentiert**, nicht als Lösung: In Browsern, Electron- und WPF-Oberflächen
+  gibt es kein eigenes Fensterhandle je Feld, dort greift sie nicht. Der
+  Pause-Hotkey bleibt die eigentliche Absicherung. Alles andere wäre eine
+  falsche Sicherheit, die zum Leichtsinn verleitet.
+
+**Stand danach:** 118 Tests grün (vorher 115). Die Benchmark-Zahlen ändern
+sich durch Phase 1 **nicht** — der Fehler steckte im Ersetzen im echten
+Textfeld, nicht in der Korrekturlogik.
+
+⚠️ **Noch nicht im Alltag verifiziert.** Die neue Ersetz-Logik ist durch
+Tests abgedeckt (`BeruecksichtigtWasSeitDerWortgrenzeGetipptWurde`,
+`UndoStelltAuchDasInzwischenGetippteWiederHer`, `KorrigiertNachEnterGarNicht`),
+aber ob der Wettlauf im echten Betrieb wirklich weg ist, lässt sich nur durch
+Tippen prüfen. **Nächste Aufgabe für den Nutzer:** Programm neu bauen,
+schnell einen Absatz tippen und schauen, ob noch Wort-Bruchstücke entstehen.
+
+**Offene Punkte / Nächste Schritte:**
+- Alltagstest der Ersetzung durch den Nutzer (siehe oben).
+- **Phase 2:** Umlaut-Ersetzungstabelle — laut Messung der größte Hebel.
+
 ## 2026-09-05 – Phase 0 erledigt: die Messlatte steht, Ausgangszahlen gemessen
 
 **Was:** Der Benchmark aus Plan-Phase 0 ist gebaut und liefert zum ersten Mal

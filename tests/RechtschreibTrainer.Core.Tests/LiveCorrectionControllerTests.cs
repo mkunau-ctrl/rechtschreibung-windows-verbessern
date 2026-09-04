@@ -118,14 +118,59 @@ public class LiveCorrectionControllerTests
     }
 
     [Fact]
-    public void OnANewlineBoundaryKeepsTheNewlineAndOnlyRewritesTheWord()
+    public void KorrigiertNachEnterGarNicht()
     {
-        var c = Build(out var reps, out _, "cih=ich");
+        // Nach Enter steht der Zeilenumbruch zwischen Cursor und Wort. Um an das
+        // Wort zu kommen, müsste er mitgelöscht und neu getippt werden — in
+        // Chat-Fenstern verschickt das die Nachricht ein zweites Mal. Lieber
+        // nicht korrigieren.
+        var c = Build(out var reps, out var learned, "cih=ich");
 
         c.HandleWord(Word("cih", boundary: '\n'));
 
+        Assert.Empty(reps);
+        Assert.Empty(learned);
+    }
+
+    [Fact]
+    public void BeruecksichtigtWasSeitDerWortgrenzeGetipptWurde()
+    {
+        // Der Nutzer tippt weiter, während die Korrektur noch aussteht. Auf dem
+        // Bildschirm steht dann schon "cih ab" — es müssen also 6 Zeichen weg
+        // und "ich ab" neu getippt werden. Sonst fressen die Rücktasten das
+        // nächste Wort an.
+        var c = Build(out var reps, out _, "cih=ich");
+
+        c.HandleWord(Word("cih"), typedSince: "ab");
+
         var cmd = Assert.Single(reps);
-        Assert.Equal(3, cmd.DeleteCount);   // only "cih", newline stays
-        Assert.Equal("ich", cmd.Insert);
+        Assert.Equal(6, cmd.DeleteCount);   // "cih" + Leerzeichen + "ab"
+        Assert.Equal("ich ab", cmd.Insert);
+    }
+
+    [Fact]
+    public void UndoStelltAuchDasInzwischenGetippteWiederHer()
+    {
+        var c = Build(out var reps, out _, "cih=ich");
+        c.HandleWord(Word("cih"), typedSince: "ab");
+        reps.Clear();
+
+        c.Undo();
+
+        var cmd = Assert.Single(reps);
+        Assert.Equal(6, cmd.DeleteCount);   // "ich ab"
+        Assert.Equal("cih ab", cmd.Insert);
+    }
+
+    [Fact]
+    public void OhneNachgetippteZeichenBleibtEsBeimEinfachenFall()
+    {
+        var c = Build(out var reps, out _, "cih=ich");
+
+        c.HandleWord(Word("cih"), typedSince: "");
+
+        var cmd = Assert.Single(reps);
+        Assert.Equal(4, cmd.DeleteCount);
+        Assert.Equal("ich ", cmd.Insert);
     }
 }

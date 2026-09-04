@@ -28,10 +28,13 @@ Der ganze Ablauf in einem Durchgang:
    kommt, meldet der `WordWatcher` das fertige Wort samt Grenzzeichen und
    Kontext.
 
-4. **Kurz abwarten.** `TrayApp` legt das Wort zur Seite und wartet, bis
-   `SettleTime` (derzeit 130 ms) lang keine Taste mehr kam. Grund: Tippst du
-   sofort weiter, würden die simulierten Rücktasten ins nächste Wort laufen.
-   ⚠️ **Dieser Wert ist zu klein** — siehe „Bekannte Probleme" unten.
+4. **Nachgetipptes mitzählen.** `TrayApp` legt das Wort zur Seite und
+   korrigiert beim nächsten Timer-Takt (25 ms). Tippst du in der Zwischenzeit
+   weiter, werden diese Zeichen in `_typedSinceWord` gesammelt: Sie stehen auf
+   dem Bildschirm zwischen Cursor und Wort und werden bei der Ersetzung
+   **mitgelöscht und danach wieder mitgetippt**. Deshalb muss auf keine
+   Tipppause gewartet werden — was bei durchgehendem Tippen auch nie
+   funktionieren würde.
 
 5. **Korrektur bestimmen.** `OfflineCorrector` geht in dieser festen
    Reihenfolge vor und nimmt das erste Ergebnis:
@@ -61,9 +64,16 @@ Der ganze Ablauf in einem Durchgang:
      **1,6** schlagen — sonst wird **nichts** ersetzt.
 
 7. **Ersetzen.** `LiveCorrectionController` rechnet aus, wie viele Zeichen weg
-   müssen, und ruft `Replacer`: N Rücktasten, dann der neue Text als
-   Unicode-Eingabe (`SendInput`). Das Grenzzeichen wird mit gelöscht und neu
-   getippt — außer bei Enter, das bleibt stehen.
+   müssen (Wort + Grenzzeichen + inzwischen Getipptes), und ruft `Replacer`:
+   N Rücktasten, dann der neue Text als Unicode-Eingabe (`SendInput`).
+   **Nach Enter wird nicht korrigiert** — der Zeilenumbruch stünde zwischen
+   Cursor und Wort, und ihn neu zu tippen würde in Chat-Fenstern die Nachricht
+   ein zweites Mal abschicken.
+
+   Außerdem: In einem klassischen Windows-Passwortfeld wird **weder gelesen
+   noch geschrieben** (`Win32.FocusedFieldIsPassword`). Das greift aber nicht
+   in Browsern und modernen Oberflächen — der Pause-Hotkey bleibt die
+   eigentliche Absicherung.
 
 8. **Merken.** Die Korrektur wird als eine JSON-Zeile an `korrekturen.jsonl`
    angehängt (nur `vorher → nachher → Quelle`, **kein Fließtext**) und für
@@ -196,12 +206,16 @@ Autostart an). **Entfernen:** derselbe Befehl mit `-Uninstall` — deine Daten i
 **Diese Punkte sind teuer wiederzuentdecken — bitte hier nachlesen, bevor du
 irgendwas debuggst.**
 
-1. **Die Ersetz-Verzögerung ist zu kurz (offener Fehler).**
-   `TrayApp.SettleTime` = 130 ms, gemessene Tipp-Pause zwischen zwei Tasten =
-   **188 ms im Median**. Die Ersetzung feuert also mitten im Weitertippen, die
-   Rücktasten fressen Zeichen des nächsten Wortes. Daraus entstehen
-   Wort-Bruchstücke, die dann auch noch „korrigiert" werden. Behebung ist
-   Phase 1 im Qualitätsplan.
+1. **Auf eine Tipppause zu warten ist der falsche Ansatz** (behoben am
+   2026-09-05, aber merken, damit es nicht zurückkommt). Früher wartete
+   `TrayApp` auf 130 ms Tastenruhe. Das war doppelt falsch: Der gemessene
+   Tastenabstand des Nutzers liegt im Median bei **188 ms** — 130 ms Ruhe gibt
+   es also ständig *während* des Tippens, die Ersetzung feuerte mittendrin und
+   die Rücktasten fraßen das nächste Wort an. Und ein *längerer* Wert hätte es
+   schlimmer gemacht: Bei durchgehendem Tippen gäbe es nie eine Pause, in der
+   korrigiert werden dürfte, und die Korrekturen fielen ganz aus. Die Lösung
+   ist, **nicht zu warten**, sondern die inzwischen getippten Zeichen
+   mitzuzählen und mitzuersetzen.
 
 2. **Windows Defender hält `KeyboardHook.cs` für einen Virus.** Fehlalarm,
    weil ein systemweiter Tastatur-Hook technisch wie ein Keylogger aussieht.

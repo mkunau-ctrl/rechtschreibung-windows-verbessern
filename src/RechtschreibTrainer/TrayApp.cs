@@ -1,3 +1,4 @@
+using System.Text;
 using RechtschreibTrainer.Core;
 
 namespace RechtschreibTrainer;
@@ -31,11 +32,15 @@ internal sealed class TrayApp : ApplicationContext
 
     private IntPtr _lastForeground;
     private DateTime _lastActivity = DateTime.Now;
-    private DateTime _lastKeystroke = DateTime.Now;
     private WordCompleted? _pendingWord;
     private int _correctionCount;
 
-    private static readonly TimeSpan SettleTime = TimeSpan.FromMilliseconds(130);
+    /// <summary>
+    /// Zeichen, die seit der Wortgrenze getippt wurden, solange die Korrektur
+    /// noch aussteht. Sie stehen auf dem Bildschirm zwischen Cursor und Wort
+    /// und müssen bei der Ersetzung mitbehandelt werden.
+    /// </summary>
+    private readonly StringBuilder _typedSinceWord = new();
 
     public TrayApp()
     {
@@ -83,12 +88,17 @@ internal sealed class TrayApp : ApplicationContext
         {
             DebugLog.Write($"WordCompleted '{w.Word}' boundary={(w.Boundary == '\n' ? "\\n" : w.Boundary.ToString())} satzanfang={w.Context.IsSentenceStart}");
             _pendingWord = w;
+            _typedSinceWord.Clear();
         };
 
-        // Kurz warten, bevor ein Wort ersetzt wird: tippt der Nutzer sofort
-        // weiter, würden die simulierten Rücktasten in das nächste Wort
-        // hineinlaufen. ~130 ms Pause = fertig getippt, sicher zu ersetzen.
-        _debounce = new System.Windows.Forms.Timer { Interval = 40 };
+        // So schnell wie möglich ersetzen. Früher wurde auf 130 ms Tastenruhe
+        // gewartet — das war doppelt falsch: Der gemessene Tastenabstand des
+        // Nutzers liegt im Median bei 188 ms, die Ersetzung feuerte also
+        // mitten im Tippen; und bei durchgehendem Tippen gäbe es überhaupt
+        // keine Pause, in der korrigiert werden dürfte. Stattdessen werden
+        // jetzt die inzwischen getippten Zeichen mitgezählt (_typedSinceWord)
+        // und mitersetzt. Je kürzer der Takt, desto weniger sammelt sich an.
+        _debounce = new System.Windows.Forms.Timer { Interval = 25 };
         _debounce.Tick += (_, _) => MaybeCorrectPendingWord();
         _debounce.Start();
 
@@ -119,23 +129,42 @@ internal sealed class TrayApp : ApplicationContext
 
     private void OnChar(char c)
     {
-        _lastActivity = _lastKeystroke = DateTime.Now;
+        _lastActivity = DateTime.Now;
+
+        // In einem Passwortfeld wird weder gelesen noch geschrieben.
+        if (Win32.FocusedFieldIsPassword())
+        {
+            DropContext();
+            return;
+        }
+
+        // Steht noch eine Korrektur aus, gehört dieses Zeichen zu dem, was
+        // inzwischen auf dem Bildschirm hinter dem Wort steht.
+        if (_pendingWord is not null)
+            _typedSinceWord.Append(c);
+
         _watcher.OnChar(c);
         if (_recording.IsActive) _recording.AppendChar(c);
     }
 
     private void OnBackspace()
     {
-        _lastActivity = _lastKeystroke = DateTime.Now;
+        _lastActivity = DateTime.Now;
         // Der Nutzer bessert selbst nach — nichts mehr automatisch ersetzen.
-        _pendingWord = null;
+        ClearPending();
         _watcher.OnBackspace();
         if (_recording.IsActive) _recording.AppendBackspace();
     }
 
-    private void DropContext()
+    private void ClearPending()
     {
         _pendingWord = null;
+        _typedSinceWord.Clear();
+    }
+
+    private void DropContext()
+    {
+        ClearPending();
         _watcher.Invalidate();
     }
 
@@ -143,16 +172,25 @@ internal sealed class TrayApp : ApplicationContext
     {
         if (_pendingWord is not { } word)
             return;
-        if (DateTime.Now - _lastKeystroke < SettleTime)
-            return; // noch am Tippen — später nochmal
 
-        _pendingWord = null;
-        _controller.HandleWord(word);
+        // Nicht in Passwortfelder hineinschreiben.
+        if (Win32.FocusedFieldIsPassword())
+        {
+            DropContext();
+            return;
+        }
+
+        var typedSince = _typedSinceWord.ToString();
+        ClearPending();
+        _controller.HandleWord(word, typedSince);
     }
 
     private void OnEnter()
     {
-        _lastActivity = _lastKeystroke = DateTime.Now;
+        _lastActivity = DateTime.Now;
+        // Nach Enter wird nicht mehr korrigiert (der Zeilenumbruch lässt sich
+        // nicht gefahrlos neu tippen) — also auch nichts offen halten.
+        ClearPending();
         _watcher.OnEnter();
         if (_recording.IsActive) _recording.AppendNewline();
     }
