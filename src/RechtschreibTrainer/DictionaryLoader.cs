@@ -18,6 +18,9 @@ internal static class DictionaryLoader
     {
         var lines = new List<string>();
 
+        if (File.Exists(AppPaths.ClassicMistakes))
+            lines.AddRange(File.ReadAllLines(AppPaths.ClassicMistakes));
+
         if (File.Exists(AppPaths.BundledDictionary))
             lines.AddRange(File.ReadAllLines(AppPaths.BundledDictionary));
 
@@ -41,11 +44,14 @@ internal static class DictionaryLoader
         if (!File.Exists(AppPaths.WordListFile))
             return null;
 
-        var frequencies = File.Exists(AppPaths.FrequencyFile)
-            ? File.ReadLines(AppPaths.FrequencyFile)
-            : [];
+        IEnumerable<string> Optional(string path) =>
+            File.Exists(path) ? File.ReadLines(path) : [];
 
-        var list = WordList.FromLines(File.ReadLines(AppPaths.WordListFile), frequencies);
+        var list = WordList.FromLines(
+            File.ReadLines(AppPaths.WordListFile),
+            Optional(AppPaths.FrequencyFile),
+            Optional(AppPaths.NounFile),
+            Optional(AppPaths.KeepLowercaseFile));
         return new SpellCorrector(list, SpellSettings.Default);
     }
 }

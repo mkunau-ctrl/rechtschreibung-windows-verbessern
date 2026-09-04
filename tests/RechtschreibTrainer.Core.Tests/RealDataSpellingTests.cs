@@ -22,7 +22,9 @@ public class RealDataSpellingTests
         return new SpellCorrector(
             WordList.FromLines(
                 File.ReadLines(Path.Combine(data, "woerter.txt")),
-                File.ReadLines(Path.Combine(data, "haeufigkeit.txt"))),
+                File.ReadLines(Path.Combine(data, "haeufigkeit.txt")),
+                File.ReadLines(Path.Combine(data, "substantive.txt")),
+                File.ReadLines(Path.Combine(data, "klein-schreiben.txt"))),
             SpellSettings.Default);
     });
 
@@ -100,6 +102,26 @@ public class RealDataSpellingTests
     // Eigennamen
     [InlineData("Claude")] [InlineData("Berlin")] [InlineData("Windows")]
     public void LeavesCorrectWordsAlone(string word)
+    {
+        Assert.Null(Corrector.Value.Suggest(word));
+    }
+
+    [Theory]
+    [InlineData("montag", "Montag")]
+    [InlineData("auto", "Auto")]
+    [InlineData("computer", "Computer")]
+    [InlineData("berlin", "Berlin")]
+    public void CapitalisesLowercaseNouns(string typed, string want)
+    {
+        Assert.Equal(want, Corrector.Value.Suggest(typed));
+    }
+
+    [Theory]
+    // häufige klein geschriebene Wörter dürfen NICHT groß werden
+    [InlineData("gehen")] [InlineData("laufen")] [InlineData("schnell")]
+    [InlineData("und")] [InlineData("weil")] [InlineData("haben")]
+    [InlineData("essen")] [InlineData("machen")] [InlineData("wichtig")]
+    public void DoesNotCapitaliseCommonLowercaseWords(string word)
     {
         Assert.Null(Corrector.Value.Suggest(word));
     }

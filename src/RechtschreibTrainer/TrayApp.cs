@@ -4,7 +4,7 @@ namespace RechtschreibTrainer;
 
 /// <summary>
 /// Trägt Tray-Icon, Hotkeys und den Lebenszyklus der Hooks. Die Live-Korrektur
-/// läuft, solange sie nicht pausiert ist; der Mitschreib-Modus (F9)
+/// läuft, solange sie nicht pausiert ist; der Mitschreib-Modus (Strg+Alt+R)
 /// bleibt als separates Opt-in erhalten.
 /// </summary>
 internal sealed class TrayApp : ApplicationContext
@@ -24,6 +24,7 @@ internal sealed class TrayApp : ApplicationContext
     private readonly RecordingSession _recording = new();
     private readonly LiveCorrectionController _controller;
     private readonly NeverCorrectStore _neverCorrect;
+    private readonly HotkeySettings _keys;
 
     private readonly System.Windows.Forms.Timer _focusTimer;
 
@@ -36,6 +37,7 @@ internal sealed class TrayApp : ApplicationContext
         _ = _hotkeyForm.Handle; // Fenster-Handle sofort erzwingen — dient auch als Marshalling-Ziel
 
         AppPaths.EnsureDataDir();
+        _keys = HotkeySettings.Load();
         var dictionary = DictionaryLoader.Load();
         var spelling = DictionaryLoader.LoadSpelling();
         _neverCorrect = new NeverCorrectStore(AppPaths.NeverCorrectList);
@@ -55,13 +57,13 @@ internal sealed class TrayApp : ApplicationContext
         };
 
         var menu = new ContextMenuStrip();
-        _pauseItem = new ToolStripMenuItem("Live-Korrektur pausieren (F11)", null, (_, _) => TogglePause());
+        _pauseItem = new ToolStripMenuItem($"Live-Korrektur pausieren ({_keys.ToggleCorrection})", null, (_, _) => TogglePause());
         menu.Items.Add(_pauseItem);
-        menu.Items.Add("Letzte Korrektur rückgängig (F10)", null, (_, _) => _controller.Undo());
+        menu.Items.Add($"Letzte Korrektur rückgängig ({_keys.Undo})", null, (_, _) => _controller.Undo());
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Wörterbuch öffnen", null, (_, _) => OpenInEditor(AppPaths.UserDictionary));
         menu.Items.Add("Tasten ändern", null, (_, _) => OpenInEditor(AppPaths.HotkeyFile));
-        menu.Items.Add("Mitschreiben umschalten (F9)", null, (_, _) => ToggleRecording());
+        menu.Items.Add($"Mitschreiben umschalten ({_keys.Recording})", null, (_, _) => ToggleRecording());
         menu.Items.Add("Log-Ordner öffnen", null, (_, _) => OpenLogFolder());
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Beenden", null, (_, _) => ExitApp());
@@ -90,8 +92,8 @@ internal sealed class TrayApp : ApplicationContext
 
         _trayIcon.BalloonTipTitle = "Live-Korrektur läuft";
         _trayIcon.BalloonTipText =
-            "Bekannte Vertipper werden beim Tippen sofort korrigiert. " +
-            "F11 pausiert (z. B. vor Passwörtern), F10 macht rückgängig.";
+            $"Vertipper werden beim Tippen korrigiert. {_keys.ToggleCorrection} pausiert " +
+            $"(z. B. vor Passwörtern), {_keys.Undo} macht rückgängig.";
         _trayIcon.ShowBalloonTip(4000);
     }
 
@@ -175,14 +177,13 @@ internal sealed class TrayApp : ApplicationContext
 
     private void RegisterHotkeys()
     {
-        var keys = HotkeySettings.Load();
         var failed = new List<string>();
 
-        if (!Register(HotkeyRecord, keys.Recording)) failed.Add($"Mitschreiben ({keys.Recording})");
-        if (!Register(HotkeyUndo, keys.Undo)) failed.Add($"Rückgängig ({keys.Undo})");
-        if (!Register(HotkeyPause, keys.ToggleCorrection)) failed.Add($"Korrektur ({keys.ToggleCorrection})");
+        if (!Register(HotkeyRecord, _keys.Recording)) failed.Add($"Mitschreiben ({_keys.Recording})");
+        if (!Register(HotkeyUndo, _keys.Undo)) failed.Add($"Rückgängig ({_keys.Undo})");
+        if (!Register(HotkeyPause, _keys.ToggleCorrection)) failed.Add($"Korrektur ({_keys.ToggleCorrection})");
 
-        DebugLog.Write($"Hotkeys: Mitschreiben={keys.Recording} Rückgängig={keys.Undo} Korrektur={keys.ToggleCorrection} — fehlgeschlagen: {(failed.Count == 0 ? "keine" : string.Join(", ", failed))}");
+        DebugLog.Write($"Hotkeys: Mitschreiben={_keys.Recording} Rückgängig={_keys.Undo} Korrektur={_keys.ToggleCorrection} — fehlgeschlagen: {(failed.Count == 0 ? "keine" : string.Join(", ", failed))}");
 
         if (failed.Count > 0)
         {
@@ -221,7 +222,7 @@ internal sealed class TrayApp : ApplicationContext
 
         if (_controller.Paused)
         {
-            _pauseItem.Text = "Live-Korrektur fortsetzen (F11)";
+            _pauseItem.Text = $"Live-Korrektur fortsetzen ({_keys.ToggleCorrection})";
             if (!_recording.IsActive)
             {
                 _keyboard.Uninstall();
@@ -231,7 +232,7 @@ internal sealed class TrayApp : ApplicationContext
         }
         else
         {
-            _pauseItem.Text = "Live-Korrektur pausieren (F11)";
+            _pauseItem.Text = $"Live-Korrektur pausieren ({_keys.ToggleCorrection})";
             StartLiveCorrection();
             _watcher.Invalidate();
             Notify("Live-Korrektur aktiv", "Bekannte Vertipper werden wieder sofort korrigiert.");
@@ -259,7 +260,7 @@ internal sealed class TrayApp : ApplicationContext
             _recording.Start();
             _keyboard.Install();
             Notify("Mitschreiben gestartet",
-                "Alles Getippte landet in keystrokes.log — keine Passwörter eingeben. F9 zum Stoppen.");
+                "Alles Getippte landet in keystrokes.log — keine Passwörter eingeben.");
         }
 
         RefreshIcon();

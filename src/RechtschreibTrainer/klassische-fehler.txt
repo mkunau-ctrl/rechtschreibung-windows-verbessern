@@ -1,0 +1,78 @@
+# Klassische deutsche Rechtschreibfehler (falsch=richtig).
+# Nur eindeutige Fälle - nichts, was vom Satz abhängt (das/dass, seit/seid).
+# Mitgeliefert; deine eigene woerterbuch.txt hat trotzdem Vorrang.
+
+# --- Doppelkonsonant vergessen ---
+seperat=separat
+seperate=separate
+Standart=Standard
+standart=Standard
+agressiv=aggressiv
+aggresiv=aggressiv
+Apperat=Apparat
+Diskusion=Diskussion
+Kommision=Kommission
+Kommunion=Kommunion
+Karusell=Karussell
+Paralelle=Parallele
+paralell=parallel
+Proffessor=Professor
+Profesor=Professor
+Reperatur=Reparatur
+reperatur=Reparatur
+Resourcen=Ressourcen
+resourcen=Ressourcen
+Rhytmus=Rhythmus
+Rythmus=Rhythmus
+Terasse=Terrasse
+Ballance=Balance
+brilliant=brillant
+Comitee=Komitee
+Kommitee=Komitee
+intressant=interessant
+interressant=interessant
+offiziel=offiziell
+professionel=professionell
+traditionel=traditionell
+
+# --- nämlich / ähnlich / während ---
+nähmlich=nämlich
+nemlich=nämlich
+wärend=während
+wehrend=während
+
+# --- wider- statt wieder- ---
+wiederspiegeln=widerspiegeln
+Wiederspruch=Widerspruch
+Wiederstand=Widerstand
+wiedersprechen=widersprechen
+wiederspricht=widerspricht
+ziehmlich=ziemlich
+
+# --- Fremdwörter ---
+Ingeneur=Ingenieur
+Inginör=Ingenieur
+Machiene=Maschine
+Maschiene=Maschine
+Kanditat=Kandidat
+kanditat=Kandidat
+Portmonee=Portemonnaie
+Portmonaie=Portemonnaie
+Email=E-Mail
+
+# --- getrennt / zusammen (eindeutig) ---
+garnicht=gar nicht
+garnichts=gar nichts
+garkein=gar kein
+garkeine=gar keine
+garkeinen=gar keinen
+zuviel=zu viel
+zuwenig=zu wenig
+aufjedenfall=auf jeden Fall
+
+# --- s / ss / ß ---
+muß=muss
+daß=dass
+Fluß=Fluss
+Kuß=Kuss
+ausserdem=außerdem

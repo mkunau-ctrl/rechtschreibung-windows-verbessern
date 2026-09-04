@@ -17,20 +17,19 @@ public class SpellCorrectorTests
     }
 
     [Fact]
-    public void LeavesAKnownLowercaseWordAlone()
+    public void LeavesAGenuinelyLowercaseWordAlone()
     {
-        // Der Nutzer tippt klein - "haus" ist trotzdem korrekt geschrieben.
-        var c = Build(["Haus", "Maus"]);
+        var c = Build(["gehen", "laufen"]);
 
-        Assert.Null(c.Suggest("haus"));
+        Assert.Null(c.Suggest("gehen"));
     }
 
     [Fact]
     public void FixesAWordWithExactlyOneCloseNeighbour()
     {
-        var c = Build(["noch", "Nacht"]);
+        var c = Build(["wetter", "retter"]);
 
-        Assert.Equal("noch", c.Suggest("nocg"));
+        Assert.Equal("wetter", c.Suggest("wettee"));
     }
 
     [Fact]
@@ -74,16 +73,69 @@ public class SpellCorrectorTests
     {
         // Beide nur ein ersetzter Buchstabe entfernt und etwa gleich häufig:
         // raten wäre schlechter als nichts tun.
-        var c = Build(["Rasen", "Rosen"], "rasen 1000", "rosen 950");
+        var c = Build(["rasten", "rosten"], "rasten 1000", "rosten 950");
 
-        Assert.Null(c.Suggest("Rusen"));
+        Assert.Null(c.Suggest("rusten"));
     }
 
     [Fact]
     public void PicksTheMoreCommonWordWhenTheEditIsTheSameKind()
     {
-        var c = Build(["Rasen", "Rosen"], "rasen 100000", "rosen 200");
+        var c = Build(["rasten", "rosten"], "rasten 100000", "rosten 200");
 
-        Assert.Equal("Rasen", c.Suggest("Rusen"));
+        Assert.Equal("rasten", c.Suggest("rusten"));
+    }
+
+    [Fact]
+    public void CapitalisesANounThatWasTypedLowercase()
+    {
+        var c = Build(["Montag", "gehen"]);
+
+        Assert.Equal("Montag", c.Suggest("montag"));
+    }
+
+    [Fact]
+    public void DoesNotCapitaliseAWordThatIsAlsoValidLowercase()
+    {
+        var c = Build(["Essen", "essen"]);
+
+        Assert.Null(c.Suggest("essen"));
+    }
+
+    [Fact]
+    public void DoesNotShortenAShortForeignWordToAGermanOne()
+    {
+        // "skill" -> "kill" (ein Buchstabe weniger) ist zu billig: fast jedes
+        // kurze Wort hat so einen Nachbarn. Bei <= 5 Zeichen kein Weglassen.
+        var c = Build(["kill", "still"]);
+
+        Assert.Null(c.Suggest("skill"));
+    }
+
+    [Fact]
+    public void FixesAFiveLetterWordByAddingAForgottenLetter()
+    {
+        // Bei 5 Zeichen ist ein vergessener Buchstabe erlaubt (aber kein
+        // Streichen/Ersetzen).
+        var c = Build(["weiter"]);
+
+        Assert.Equal("weiter", c.Suggest("witer"));
+    }
+
+    [Fact]
+    public void DoesNotFuzzyMatchWordsShorterThanFive()
+    {
+        var c = Build(["frage", "trage"]);
+
+        Assert.Null(c.Suggest("frae"));
+    }
+
+    [Fact]
+    public void CorrectsSpellingAndCapitalisationTogether()
+    {
+        // "montg" -> vergessenes 'a' -> "montag" -> Substantiv -> "Montag"
+        var c = Build(["Montag"]);
+
+        Assert.Equal("Montag", c.Suggest("montg"));
     }
 }

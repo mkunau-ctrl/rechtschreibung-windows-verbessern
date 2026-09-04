@@ -21,11 +21,20 @@ internal static class AppPaths
     /// <summary>Mitgelieferte Standardliste, liegt neben der .exe.</summary>
     public static string BundledDictionary => Path.Combine(AppContext.BaseDirectory, "standard-vertipper.txt");
 
+    /// <summary>Mitgelieferte Liste klassischer deutscher Rechtschreibfehler.</summary>
+    public static string ClassicMistakes => Path.Combine(AppContext.BaseDirectory, "klassische-fehler.txt");
+
     /// <summary>Deutsche Wortformen, neben der .exe im Unterordner data.</summary>
     public static string WordListFile => Path.Combine(AppContext.BaseDirectory, "data", "woerter.txt");
 
     /// <summary>Worthäufigkeiten zum Sortieren der Kandidaten.</summary>
     public static string FrequencyFile => Path.Combine(AppContext.BaseDirectory, "data", "haeufigkeit.txt");
+
+    /// <summary>Großgeschriebene Substantivformen für die Groß-/Kleinschreibung.</summary>
+    public static string NounFile => Path.Combine(AppContext.BaseDirectory, "data", "substantive.txt");
+
+    /// <summary>Wörter, die klein bleiben, auch wenn es gleichlautende Substantive gibt.</summary>
+    public static string KeepLowercaseFile => Path.Combine(AppContext.BaseDirectory, "data", "klein-schreiben.txt");
 
     public static void EnsureDataDir() => Directory.CreateDirectory(DataDir);
 }

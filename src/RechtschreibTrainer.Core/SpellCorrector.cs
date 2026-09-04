@@ -39,13 +39,24 @@ public sealed class SpellCorrector
         _settings = settings;
     }
 
+    /// <summary>Ab hier darf der Fuzzy-Abgleich überhaupt raten.</summary>
+    private const int MinFuzzyLength = 5;
+
     public string? Suggest(string word)
     {
         if (word.Length < _settings.MinLength)
             return null;
 
         if (_words.Knows(word))
-            return null;
+        {
+            // Richtig geschrieben — aber vielleicht ein klein getipptes Substantiv?
+            return _words.IsCapitalisedOnly(word)
+                ? char.ToUpperInvariant(word[0]) + word[1..]
+                : null;
+        }
+
+        if (word.Length < MinFuzzyLength)
+            return null; // zu kurz zum Raten — nur die exakten Listen greifen hier
 
         var candidates = Candidates(word.ToLowerInvariant());
         if (candidates.Count == 0)
@@ -65,7 +76,13 @@ public sealed class SpellCorrector
         if (ranked.Count > 1 && ranked[0].Frequency < ranked[1].Frequency * _settings.Dominance)
             return null;
 
-        return MatchLeadingCase(ranked[0].Word, word);
+        var best = ranked[0].Word;
+
+        // Ein Substantiv gehört groß, egal wie der Nutzer es getippt hat.
+        if (_words.IsCapitalisedOnly(best.ToLowerInvariant()))
+            return char.ToUpperInvariant(best[0]) + best[1..];
+
+        return MatchLeadingCase(best, word);
     }
 
     /// <summary>
@@ -98,20 +115,26 @@ public sealed class SpellCorrector
                 found[candidate] = weight;
         }
 
+        // Bei genau 5 Zeichen nur die „harmlosen" Kanten: einen vergessenen
+        // Buchstaben ergänzen oder zwei vertauschte drehen. Streichen und
+        // Ersetzen machen aus kurzen Wörtern zu leicht ein anderes echtes Wort
+        // ("skill" -> "still"/"kill"). Ab 6 Zeichen ist alles erlaubt.
+        var full = word.Length >= 6;
+
         for (var i = 0; i <= word.Length; i++)
         {
             var left = word[..i];
             var right = word[i..];
 
-            if (right.Length > 0)
-                Consider(left + right[1..], WeightInsertion);              // Buchstabe zu viel
+            if (right.Length > 0 && full)
+                Consider(left + right[1..], WeightInsertion);              // ein Buchstabe zu viel getippt
 
             if (right.Length > 1)
                 Consider(left + right[1] + right[0] + right[2..], WeightTransposition);
 
             foreach (var c in Alphabet)
             {
-                if (right.Length > 0)
+                if (right.Length > 0 && full)
                     Consider(left + c + right[1..], WeightSubstitution);   // falscher Buchstabe
                 Consider(left + c + right, WeightOmission);                // Buchstabe vergessen
             }

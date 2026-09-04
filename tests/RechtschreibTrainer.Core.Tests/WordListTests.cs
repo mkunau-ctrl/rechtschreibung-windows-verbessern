@@ -55,4 +55,29 @@ public class WordListTests
     {
         Assert.Equal(999, Build().Frequency("Haus"));
     }
+
+    [Fact]
+    public void RecognisesAWordThatExistsOnlyCapitalised()
+    {
+        // "Haus" ist bekannt, "haus" als eigenständiges (klein geschriebenes)
+        // Wort nicht -> es ist ein Substantiv und gehört groß.
+        var list = WordList.FromLines(["Haus", "gehen"], []);
+
+        Assert.True(list.IsCapitalisedOnly("haus"));
+    }
+
+    [Fact]
+    public void DoesNotFlagAWordThatIsValidInLowercaseToo()
+    {
+        // "gehen" ist klein ein gültiges Wort -> nicht als Substantiv behandeln.
+        var list = WordList.FromLines(["gehen", "Gehen"], []);
+
+        Assert.False(list.IsCapitalisedOnly("gehen"));
+    }
+
+    [Fact]
+    public void DoesNotFlagAnUnknownWord()
+    {
+        Assert.False(Build().IsCapitalisedOnly("kältekreislauf"));
+    }
 }

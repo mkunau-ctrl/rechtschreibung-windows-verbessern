@@ -12,7 +12,10 @@
     <None Update="standard-vertipper.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <!-- Deutsche Wortliste + Häufigkeiten, siehe data/HERKUNFT.md -->
+    <None Update="klassische-fehler.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <!-- Deutsche Wortliste + Häufigkeiten + Substantive, siehe data/HERKUNFT.md -->
     <Content Include="..\..\data\*.txt" Link="data\%(Filename)%(Extension)"
              CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

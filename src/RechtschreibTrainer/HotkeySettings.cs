@@ -9,11 +9,22 @@ namespace RechtschreibTrainer;
 /// </summary>
 internal sealed class HotkeySettings
 {
-    public HotkeySpec Recording { get; private set; } = HotkeySpec.Parse("F9")!.Value;
-    public HotkeySpec Undo { get; private set; } = HotkeySpec.Parse("F10")!.Value;
-    public HotkeySpec ToggleCorrection { get; private set; } = HotkeySpec.Parse("F11")!.Value;
+    public HotkeySpec Recording { get; private set; } = HotkeySpec.Parse("Strg+Alt+R")!.Value;
+    public HotkeySpec Undo { get; private set; } = HotkeySpec.Parse("Strg+Alt+Z")!.Value;
+    public HotkeySpec ToggleCorrection { get; private set; } = HotkeySpec.Parse("Strg+Alt+P")!.Value;
 
     private const string Template =
+        "# Tastenbelegung des Rechtschreib-Trainers.\n" +
+        "# Format:  aktion = taste   (z. B.  Strg+Alt+R  oder  F9 )\n" +
+        "# Erlaubt: Strg, Alt, Shift + eine Taste F1..F12, A..Z oder 0..9.\n" +
+        "# Nach dem Ändern das Programm neu starten.\n" +
+        "\n" +
+        "mitschreiben  = Strg+Alt+R\n" +
+        "rueckgaengig  = Strg+Alt+Z\n" +
+        "korrektur     = Strg+Alt+P\n";
+
+    /// <summary>Frühere auto-erzeugte Vorlage — wird kommentarlos auf die neue aktualisiert.</summary>
+    private const string LegacyTemplate =
         "# Tastenbelegung des Rechtschreib-Trainers.\n" +
         "# Format:  aktion = taste   (z. B.  F9  oder  Strg+Alt+K )\n" +
         "# Erlaubt: Strg, Alt, Shift + eine Taste F1..F12, A..Z oder 0..9.\n" +
@@ -33,6 +44,13 @@ internal sealed class HotkeySettings
         if (!File.Exists(AppPaths.HotkeyFile))
         {
             AppPaths.EnsureDataDir();
+            File.WriteAllText(AppPaths.HotkeyFile, Template);
+            return settings;
+        }
+
+        // Nie vom Nutzer angefasst? Dann auf die aktuelle Vorlage heben.
+        if (Normalise(File.ReadAllText(AppPaths.HotkeyFile)) == Normalise(LegacyTemplate))
+        {
             File.WriteAllText(AppPaths.HotkeyFile, Template);
             return settings;
         }
@@ -60,4 +78,6 @@ internal sealed class HotkeySettings
 
         return settings;
     }
+
+    private static string Normalise(string s) => s.Replace("\r\n", "\n").Trim();
 }
