@@ -9,8 +9,21 @@ Text protokolliert, um daraus neue Korrekturen abzuleiten.
 
 ## Wo weiterlesen
 
-- `docs/PROJEKT-LOG.md` — Verlauf, aktueller Stand, offene Punkte. **Zuerst hier lesen.**
-- `docs/superpowers/specs/2026-09-03-live-korrektur-offline-design.md` — Design/Spec der Live-Korrektur (Bausteine, Verhalten, Sicherheitsüberlegungen).
+**Den Code musst du nicht lesen, um hier weiterzuarbeiten.** Diese zwei
+Dateien reichen als Einstieg:
+
+1. **`docs/DATEIEN.md`** — wie das Programm funktioniert (Ablauf beim Tippen,
+   Schritt für Schritt), was jede Datei tut, wo welche Daten liegen, und die
+   bekannten Fallstricke. **Zuerst hier lesen.**
+2. **`docs/PROJEKT-LOG.md`** — was wann warum gemacht wurde, aktueller Stand,
+   offene Punkte.
+
+Bei Bedarf tiefer:
+
+- `docs/superpowers/plans/2026-09-05-korrektur-qualitaet-plan.md` — der laufende Plan zur Qualitätssteigerung (Phasen, Kennzahlen, Entscheidungen).
+- `docs/RECHERCHE-KORREKTURSYSTEME.md` — wie Hunspell, Aspell, SymSpell, LanguageTool & Co. das lösen, mit Quellen und Lizenzen.
+- `docs/superpowers/specs/2026-09-03-live-korrektur-offline-design.md` — das ursprüngliche Design der Live-Korrektur.
+- `data/HERKUNFT.md` — Herkunft, Umfang und Lizenz aller Wortlisten.
 - `README.md` — Nutzersicht: Funktionsweise, Sicherheitshinweise, Build-Befehle.
 
 ## Aufbau

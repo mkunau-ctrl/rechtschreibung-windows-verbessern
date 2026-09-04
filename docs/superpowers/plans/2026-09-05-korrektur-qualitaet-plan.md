@@ -261,6 +261,66 @@ Häufigkeitstabelle* unkritisch, für das Mitliefern von Rohtext nicht).
    verworfen und **niemals in eine Datei geschrieben**. Das ist beim Bauen
    von Phase 4 als Test abzusichern, nicht nur als Vorsatz.
 
+## Nachtrag 2026-09-05: Ergebnisse der zweiten Recherche-Runde
+
+Ausführlich in **`docs/RECHERCHE-KORREKTURSYSTEME.md`**. Vier Punkte ändern
+den Plan inhaltlich:
+
+### NEU: Phase 2b — Wortliste vervollständigen (vor Phase 3 zwingend)
+
+**Komposita-Zerlegung.** Deutsch bildet beliebig viele Zusammensetzungen
+(`Kältekreislauf`, `Nutzungslimit`). Die stehen in keiner Wortliste und sehen
+für das Programm aus wie Tippfehler. Bei Abstand 1 passiert meist nichts, weil
+kein Kandidat gefunden wird — **bei Abstand 2 (Phase 3) findet sich zu fast
+jedem langen Wort irgendein Kandidat**. Ohne Zerlegungsprüfung würde Phase 3
+also korrekte Komposita zerstören. Deshalb: Vor jedem Raten prüfen, ob sich
+das Wort in bekannte Teile zerlegen lässt (inkl. Fugen-`s`) — wenn ja, Finger
+weg. Hunspell macht das rekursiv mit `COMPOUNDMIN 2`.
+
+**Affix-Expansion.** Laut `data/HERKUNFT.md` haben wir vom LibreOffice-
+Wörterbuch nur die **Stämme** übernommen und die Affix-Regeln nie ausgewertet.
+Mit `wordforms` (Hunspell) bzw. Lucenes `WordFormGenerator` lassen sich alle
+gültigen Wortformen erzeugen. Jedes zusätzliche korrekte Wort ist ein Wort,
+das nicht mehr fälschlich angefasst wird — senkt die Fehlalarm-Rate direkt.
+
+### Ergänzung zu Phase 1: Passwortfelder automatisch erkennen
+
+Heute schützt nur der Pause-Hotkey, den du selbst drücken musst. Über
+`GetGUIThreadInfo` + Fensterstil `ES_PASSWORD` lässt sich ein klassisches
+Passwortfeld erkennen und Korrektur **wie Mitschreiben** automatisch
+aussetzen. Ehrliche Einschränkung: In Browsern und modernen Oberflächen
+(Electron, WPF) greift das nicht — es ist eine **zusätzliche** Absicherung,
+kein Ersatz für den Hotkey. Muss genau so dokumentiert werden.
+
+### Ergänzung zu Phase 3: Kölner Phonetik als zweite Kandidatenquelle
+
+Deutsches Gegenstück zu Soundex (Postel, 1969). Fängt Fehlerklassen, die die
+Editierdistanz schlecht abdeckt: `nemlich→nämlich`, `ziehmlich→ziemlich`,
+`Maschiene→Maschine`. Als **zusätzliche** Quelle mit eigenem, niedrigerem
+Gewicht — nie allein entscheidend.
+
+### Präzisierung Phase 1 und 4
+
+- **Phase 1:** Der technisch saubere Weg wäre das Text Services Framework
+  (TSF) — damit ließe sich Text direkt einfügen statt Tastendrücke zu
+  simulieren, der Wettlauf entfiele bauartbedingt. Preis: COM-Textdienst,
+  systemweit registriert, läuft im Prozess jeder Zielanwendung, in C# sehr
+  aufwendig und für Virenscanner noch verdächtiger als der jetzige Hook.
+  **Entscheidung: bei `SendInput` bleiben, Timing reparieren.** TSF bleibt als
+  Option dokumentiert.
+- **Phase 4:** Frei verfügbar sind zunächst nur **5.000** deutsche Bigramme
+  (Google-Books-Ableitung, CC BY 3.0, direkt ladbar). Die große freie Quelle
+  (Leipzig Corpora, CC BY) ist bot-geschützt und müsste **von Hand**
+  heruntergeladen werden. Für die häufigsten Groß-/Kleinschreibfälle reicht
+  die kleine Liste plus eine Artikel-/Präpositions-Regel.
+
+### Realistische Erwartung
+
+Auf beliebigem Fremdtext erreichen gängige Korrektoren nur ein F-Maß um 0,5.
+90 % sind erreichbar, **weil die Messlatte aus deinem eigenen Tippverhalten
+gebaut wird** — nicht aus zufälligem deutschen Text. Das ist keine
+Schummelei, sondern genau das Ziel: Das Ding soll *dich* verstehen.
+
 ## Startpunkt für die Umsetzung
 
 Phase 0, erste Aufgabe: alle 82 Korrekturen aus `korrekturen.jsonl` gegen den
