@@ -60,6 +60,7 @@ internal sealed class TrayApp : ApplicationContext
         menu.Items.Add("Letzte Korrektur rückgängig (F10)", null, (_, _) => _controller.Undo());
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Wörterbuch öffnen", null, (_, _) => OpenInEditor(AppPaths.UserDictionary));
+        menu.Items.Add("Tasten ändern", null, (_, _) => OpenInEditor(AppPaths.HotkeyFile));
         menu.Items.Add("Mitschreiben umschalten (F9)", null, (_, _) => ToggleRecording());
         menu.Items.Add("Log-Ordner öffnen", null, (_, _) => OpenLogFolder());
         menu.Items.Add(new ToolStripSeparator());
@@ -174,24 +175,29 @@ internal sealed class TrayApp : ApplicationContext
 
     private void RegisterHotkeys()
     {
+        var keys = HotkeySettings.Load();
         var failed = new List<string>();
 
-        if (!Register(HotkeyRecord, Win32.VK_F9)) failed.Add("F9");
-        if (!Register(HotkeyUndo, Win32.VK_F10)) failed.Add("F10");
-        if (!Register(HotkeyPause, Win32.VK_F11)) failed.Add("F11");
+        if (!Register(HotkeyRecord, keys.Recording)) failed.Add($"Mitschreiben ({keys.Recording})");
+        if (!Register(HotkeyUndo, keys.Undo)) failed.Add($"Rückgängig ({keys.Undo})");
+        if (!Register(HotkeyPause, keys.ToggleCorrection)) failed.Add($"Korrektur ({keys.ToggleCorrection})");
+
+        DebugLog.Write($"Hotkeys: Mitschreiben={keys.Recording} Rückgängig={keys.Undo} Korrektur={keys.ToggleCorrection} — fehlgeschlagen: {(failed.Count == 0 ? "keine" : string.Join(", ", failed))}");
 
         if (failed.Count > 0)
         {
-            Notify($"Hotkey belegt: {string.Join(", ", failed)}",
-                "Ein anderes Programm hält die Taste. Alles geht weiterhin über das Tray-Menü.");
+            Notify("Taste konnte nicht belegt werden",
+                $"{string.Join("; ", failed)}. Meist hält ein anderes Programm die Taste, oder auf dem Laptop braucht sie Fn. " +
+                "Andere Taste im Tray-Menü unter 'Tasten ändern' eintragen und neu starten. Das Menü geht immer.");
         }
     }
 
-    private bool Register(int id, uint vk) =>
-        Win32.RegisterHotKey(_hotkeyForm.Handle, id, Win32.MOD_NOREPEAT, vk);
+    private bool Register(int id, HotkeySpec spec) =>
+        Win32.RegisterHotKey(_hotkeyForm.Handle, id, spec.Modifiers | Win32.MOD_NOREPEAT, spec.VirtualKey);
 
     private void OnHotkey(int id)
     {
+        DebugLog.Write($"Hotkey {id} ausgelöst");
         switch (id)
         {
             case HotkeyRecord: ToggleRecording(); break;

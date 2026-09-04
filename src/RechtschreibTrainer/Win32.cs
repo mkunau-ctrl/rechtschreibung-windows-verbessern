@@ -18,8 +18,4 @@ internal static class Win32
 
     /// <summary>Verhindert, dass Gedrückthalten den Hotkey mehrfach auslöst.</summary>
     public const uint MOD_NOREPEAT = 0x4000;
-
-    public const uint VK_F9 = 0x78;
-    public const uint VK_F10 = 0x79;
-    public const uint VK_F11 = 0x7A;
 }

@@ -15,6 +15,9 @@ internal static class AppPaths
     /// <summary>Wörter, die der Nutzer per F10 zurückgewiesen hat.</summary>
     public static string NeverCorrectList => Path.Combine(DataDir, "nie-korrigieren.txt");
 
+    /// <summary>Vom Nutzer editierbare Tastenbelegung.</summary>
+    public static string HotkeyFile => Path.Combine(DataDir, "tasten.txt");
+
     /// <summary>Mitgelieferte Standardliste, liegt neben der .exe.</summary>
     public static string BundledDictionary => Path.Combine(AppContext.BaseDirectory, "standard-vertipper.txt");
 
