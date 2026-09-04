@@ -17,6 +17,8 @@ public enum CorrectionSource
     Rule,
     /// <summary>Aus der großen Wortliste erschlossen (Damerau-Abstand 1).</summary>
     Spelling,
+    /// <summary>Feste Ersatzschreibung aufgelöst (ue→ü, oe→ö, ae→ä, ss→ß).</summary>
+    Replacement,
     Capitalization,
 }
 
@@ -72,6 +74,11 @@ public sealed class OfflineCorrector
                 current = fromRule;
                 source = CorrectionSource.Rule;
             }
+            else if (_spelling is not null && TryReplacement(current, _spelling, out var fromReplacement))
+            {
+                current = fromReplacement;
+                source = CorrectionSource.Replacement;
+            }
             else if (context.AllowSpellGuess && _spelling?.Suggest(current) is { } fromSpelling)
             {
                 current = fromSpelling;
@@ -87,5 +94,31 @@ public sealed class OfflineCorrector
         }
 
         return new CorrectionResult(word, current, source);
+    }
+
+    /// <summary>
+    /// Versucht, eine feste Ersatzschreibung (<see cref="ReplacementTable"/>)
+    /// aufzulösen. Absicherung: Ist <paramref name="word"/> selbst schon ein
+    /// bekanntes Wort, wird nichts angefasst — sonst würde z. B. "Masse"
+    /// (korrekt) zu "Maße" (ein anderes Wort) verfälscht. Nur wenn das
+    /// getippte Wort unbekannt ist UND genau eine Auflösung ein bekanntes
+    /// Wort ergibt, wird sie übernommen.
+    /// </summary>
+    private static bool TryReplacement(string word, SpellCorrector spelling, out string resolved)
+    {
+        resolved = word;
+
+        if (spelling.IsKnownWord(word))
+            return false; // schon richtig — nicht dran rühren
+
+        foreach (var candidate in ReplacementTable.Candidates(word))
+        {
+            if (!spelling.IsKnownWord(candidate))
+                continue;
+            resolved = candidate;
+            return true;
+        }
+
+        return false;
     }
 }

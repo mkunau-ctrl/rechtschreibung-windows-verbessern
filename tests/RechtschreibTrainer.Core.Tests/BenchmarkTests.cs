@@ -163,8 +163,11 @@ public class BenchmarkTests
     // ---- Der erreichte Stand. Verbessert sich etwas, HIER hochsetzen. ----
     // 2026-09-05, Phase 0 (Ausgangsmessung, noch keine Verbesserung gebaut):
     //   Praezision 94,9 % | Trefferquote 82,5 % | Fehlalarme 1,3 %
-    private const double StandPraezision = 0.949;
-    private const double StandTrefferquote = 0.824;
+    // 2026-09-05, Phase 2 (Ersatzschreibung ue/oe/ae/ss vor jedem Raten):
+    //   Praezision 99,0 % | Trefferquote 86,8 % | Fehlalarme 1,3 % (unveraendert)
+    //   -> Praezisionsziel (98%) erreicht. Alle 4 Falschersetzungen behoben.
+    private const double StandPraezision = 0.990;
+    private const double StandTrefferquote = 0.868;
     private const double StandFehlalarme = 0.013;
 
     // ---- Das Ziel aus dem Plan (noch nicht erreicht). ----

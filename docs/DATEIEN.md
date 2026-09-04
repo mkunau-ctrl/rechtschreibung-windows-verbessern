@@ -42,8 +42,15 @@ Der ganze Ablauf in einem Durchgang:
    2. Steht es im **Wörterbuch** (`falsch=richtig`)? → das nehmen.
    3. Greift eine **Regel** (`scg→sch`, Wortende `cg→ch`, Wortanfang
       `cih→ich`)? → das nehmen.
-   4. Sonst **raten** lassen (`SpellCorrector`, nur wenn `AllowSpellGuess`).
-   5. Zuletzt unabhängig davon: Ist **Satzanfang** und das Wort klein? → groß
+   4. Löst eine **Ersatzschreibung** (`ReplacementTable`: `ue→ü`, `oe→ö`,
+      `ae→ä`, `ss→ß`) das Wort zu einem bekannten Wort auf? → das nehmen.
+      Das ist **kein Raten** — wer `fuer` tippt, meint `für`, das steht nicht
+      zur Debatte. Läuft auch auf einem möglichen Bruchstück, weil es nicht
+      geraten, sondern nur aufgelöst wird. **Absicherung:** Ist das getippte
+      Wort selbst schon bekannt, wird nichts angefasst — sonst würde `Masse`
+      (korrekt) zu `Maße` (ein anderes Wort) verfälscht.
+   5. Sonst **raten** lassen (`SpellCorrector`, nur wenn `AllowSpellGuess`).
+   6. Zuletzt unabhängig davon: Ist **Satzanfang** und das Wort klein? → groß
       schreiben.
 
 6. **Raten (nur wenn nötig).** `SpellCorrector` arbeitet gegen die große
@@ -110,6 +117,7 @@ Kein Windows, keine Dateizugriffe im Kern, alles unit-testbar.
 | `OfflineCorrector.cs` | Die Entscheidungskette (Nie-Liste → Wörterbuch → Regeln → Raten → Satzanfang). Definiert auch `WordContext`, `CorrectionResult` und `CorrectionSource`. |
 | `CorrectionDictionary.cs` | Feste Ersetzungen im Format `falsch=richtig`. Späterer Eintrag gewinnt. Kennt den Groß-/Kleinschreibungs-Sonderfall am Satzanfang. |
 | `CorrectionRules.cs` | Drei fest verdrahtete Muster-Regeln: `scg→sch` überall, `cg→ch` am Wortende, `cih→ich` am Wortanfang. |
+| `ReplacementTable.cs` | Feste Ersatzschreibungen nach Hunspell-`REP`-Vorbild: `ue→ü`, `oe→ö`, `ae→ä`, `ss→ß`. Liefert Kandidaten; `OfflineCorrector` prüft, ob einer davon ein bekanntes Wort ergibt. |
 | `SpellCorrector.cs` | Das Raten gegen die große Wortliste (Damerau-Abstand 1, Gewichte, Dominanz-Schwelle). `SpellSettings` hält die Stellschrauben. |
 | `WordList.cs` | Die geladenen Wortlisten im Speicher: kennt Wörter, Häufigkeiten, Substantive, Eigennamen und die „bleibt klein"-Ausnahmen. |
 | `LiveCorrectionController.cs` | Bindeglied: nimmt fertige Wörter, holt die Korrektur, stößt Ersetzung + Protokoll an, verwaltet Rückgängig. Kennt kein Windows — Ersetzen und Loggen sind Rückrufe. |

@@ -129,4 +129,58 @@ public class OfflineCorrectorTests
         Assert.Equal("Ich", result.Corrected);
         Assert.Equal(CorrectionSource.Dictionary, result.Source);
     }
+
+    // ---- Ersatzschreibung (ue/oe/ae/ss), Phase 2 ----
+
+    [Fact]
+    public void LoestUmlautErsatzschreibungAuf()
+    {
+        var result = WithSpelling([], "möchte")
+            .Correct("moechte", new WordContext(IsSentenceStart: false));
+
+        Assert.Equal("möchte", result.Corrected);
+        Assert.Equal(CorrectionSource.Replacement, result.Source);
+    }
+
+    [Fact]
+    public void RuehrtEinBereitsKorrektesWortMitSsNichtAn()
+    {
+        // "Masse" ist korrekt und ein ANDERES Wort als "Maße" — die
+        // Ersatzschreibung darf ein bekanntes Wort niemals verfälschen.
+        var result = WithSpelling([], "Masse", "Maße")
+            .Correct("Masse", new WordContext(IsSentenceStart: false));
+
+        Assert.False(result.HasCorrection);
+    }
+
+    [Fact]
+    public void PersonalDictionaryWinsOverReplacementTable()
+    {
+        var result = WithSpelling(["fuer=Für (mein eigener Eintrag)"], "für")
+            .Correct("fuer", new WordContext(IsSentenceStart: false));
+
+        Assert.Equal("Für (mein eigener Eintrag)", result.Corrected);
+        Assert.Equal(CorrectionSource.Dictionary, result.Source);
+    }
+
+    [Fact]
+    public void ReplacementGreiftAuchWennDasWortEinBruchstueckSeinKoennte()
+    {
+        // Anders als das Fuzzy-Raten ist die Ersatzschreibung eine sichere,
+        // nicht geratene Auflösung — sie darf auch auf einem Bruchstück laufen.
+        var result = WithSpelling([], "möchte")
+            .Correct("moechte", new WordContext(IsSentenceStart: false, AllowSpellGuess: false));
+
+        Assert.Equal("möchte", result.Corrected);
+        Assert.Equal(CorrectionSource.Replacement, result.Source);
+    }
+
+    [Fact]
+    public void KeineErsetzungWennKeineAufloesungBekanntIst()
+    {
+        var result = WithSpelling([], "haus")
+            .Correct("fuer", new WordContext(IsSentenceStart: false));
+
+        Assert.False(result.HasCorrection);
+    }
 }

@@ -42,6 +42,13 @@ public sealed class SpellCorrector
     /// <summary>Ab hier darf der Fuzzy-Abgleich überhaupt raten.</summary>
     private const int MinFuzzyLength = 5;
 
+    /// <summary>
+    /// Ist das Wort (unabhängig von Groß-/Kleinschreibung) in der Wortliste
+    /// bekannt? Für den <see cref="ReplacementTable"/>-Schritt: Ein Kandidat
+    /// wird nur übernommen, wenn er dadurch zu einem echten Wort wird.
+    /// </summary>
+    public bool IsKnownWord(string word) => _words.Knows(word) || _words.ProperNoun(word) is not null;
+
     public string? Suggest(string word)
     {
         if (word.Length < _settings.MinLength)

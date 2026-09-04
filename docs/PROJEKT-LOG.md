@@ -1,5 +1,58 @@
 # Projekt-Log — Rechtschreib-Trainer (Windows)
 
+## 2026-09-05 – Phase 2: Ersatzschreibung (ue/oe/ae/ss) — Präzisionsziel erreicht
+
+**Was:** Neue Klasse `ReplacementTable.cs` mit den deutschen Ersatzschreibungen
+nach Hunspell-`REP`-Vorbild (`ue→ü`, `oe→ö`, `ae→ä`, `ss→ß`, jeweils auch
+großgeschrieben). `OfflineCorrector` wendet sie **vor** dem Fuzzy-Raten an,
+als neue Quelle `CorrectionSource.Replacement`.
+
+**Absicherung (wichtigster Teil der Änderung):** Eine Auflösung wird nur
+übernommen, wenn (a) das getippte Wort selbst **unbekannt** ist und (b) genau
+eine Auflösung ein **bekanntes** Wort ergibt. Ohne diese Prüfung würde z. B.
+`Masse` (korrekt) zu `Maße` (ein anderes Wort) verfälscht — beide sind
+gültige deutsche Wörter, nur eine reine `ss→ß`-Ersetzung ohne Gegenprüfung
+könnte das nicht unterscheiden.
+
+**Warum:** Die Benchmark-Messung aus Phase 0 zeigte, dass **alle vier**
+protokollierten Falschersetzungen Umlaut-Ersatzschreibung waren
+(`moechte→mochte`, `waehrend→wahrend`, `gruen→grauen`, `schoen→Schonen`) —
+der mit Abstand größte Hebel für Präzision.
+
+**Ergebnis (Benchmark vorher/nachher):**
+
+| Kennzahl | Phase 0 | Phase 2 | Ziel |
+|---|---|---|---|
+| Präzision | 94,9 % | **99,0 %** | ≥ 98 % ✅ erreicht |
+| Trefferquote | 82,5 % | 86,8 % | ≥ 90 % |
+| Fehlalarme | 1,3 % | 1,3 % (unverändert) | ≈ 0 % |
+
+Alle vier Falschersetzungen aus Phase 0 sind weg. Der verbleibende eine
+Fehlalarm (`codest→Codes`) stammt aus dem Fuzzy-Raten, nicht aus der
+Ersatzschreibung, und ist nicht Teil dieser Änderung.
+
+**Entscheidungen:**
+- Nur die **eindeutigen** Tastatur-Ersatzformen übernommen (`ue/oe/ae/ss`),
+  nicht die übrigen Hunspell-`REP`-Paare (`f/ph`, `d/t`, `ch/k` …) — die
+  betreffen Rechtschreibunsicherheit bei ganzen Wortstämmen, nicht das Tippen
+  von Umlauten, und hätten hier nur Fehlgriffe produziert.
+- Die Ersatzschreibung läuft **auch auf möglichen Wortbruchstücken**
+  (`AllowSpellGuess: false`) — anders als das Fuzzy-Raten, weil sie nicht
+  rät, sondern nur eine feststehende Auflösung prüft.
+- **Ratsche hochgesetzt** (`BenchmarkTests.cs`): Präzision 94,9 % → 99,0 %,
+  Trefferquote 82,5 % → 86,8 %. Ein künftiger Rückschritt unter diese Werte
+  lässt die Testsuite sofort rot werden.
+
+**Stand danach:** 131 Tests grün (vorher 118).
+
+**Offene Punkte / Nächste Schritte:**
+- Trefferquote (86,8 %) liegt noch unter dem Ziel von 90 % — die 15
+  verbleibenden übersehenen Fälle sind größtenteils Distanz-2-Vertipper
+  (`korogirt`, `personlaissierter`, `ausfuerhren`) → Plan-Phase 3.
+- Der eine verbliebene Fehlalarm `codest→Codes` — separat zu untersuchen,
+  gehört nicht zur Ersatzschreibung.
+- Alltagstest der Phase-1-Ersetzung durch den Nutzer steht weiterhin aus.
+
 ## 2026-09-05 – Phase 1: Wettlauf beim Ersetzen behoben, Passwortfelder ausgespart
 
 **Was:** Drei Änderungen am Ersetz-Verhalten.
