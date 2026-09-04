@@ -1,5 +1,25 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <ItemGroup>
+    <ProjectReference Include="..\RechtschreibTrainer.Core\RechtschreibTrainer.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="RechtschreibTrainer.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="standard-vertipper.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="klassische-fehler.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <!-- Wortliste + Häufigkeiten + Substantive + Namen, siehe data/HERKUNFT.md -->
+    <Content Include="..\..\data\*.txt" Link="data\%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>

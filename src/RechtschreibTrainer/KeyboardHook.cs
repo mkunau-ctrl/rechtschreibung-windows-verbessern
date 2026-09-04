@@ -4,11 +4,16 @@ using System.Text;
 namespace RechtschreibTrainer;
 
 /// <summary>
-/// Wraps a WH_KEYBOARD_LL hook. Only ever installed while a recording session
-/// is active (see TrayApp) — never runs in the background otherwise.
+/// Wraps a WH_KEYBOARD_LL hook. Only ever installed while live correction is
+/// active or a recording session is running — never runs in the background
+/// otherwise. Selbst erzeugte (injizierte) Eingaben werden am Marker in
+/// dwExtraInfo erkannt und ignoriert.
 /// </summary>
 internal sealed class KeyboardHook : IDisposable
 {
+    /// <summary>Marker in dwExtraInfo, mit dem der Replacer seine eigenen Tastenanschläge kennzeichnet.</summary>
+    public static readonly IntPtr InjectedMarker = new(0x52_54_00); // "RT\0"
+
     private const int WH_KEYBOARD_LL = 13;
     private const int WM_KEYDOWN = 0x0100;
     private const int WM_SYSKEYDOWN = 0x0104;
@@ -56,6 +61,9 @@ internal sealed class KeyboardHook : IDisposable
     public event Action? BackspacePressed;
     public event Action? EnterPressed;
 
+    /// <summary>Pfeil-, Pos1/Ende-, Bild-auf/ab- oder Entf-Taste — Signal, den Wortpuffer zu verwerfen.</summary>
+    public event Action? NavigationKeyPressed;
+
     public bool IsInstalled => _hookId != IntPtr.Zero;
 
     public KeyboardHook()
@@ -69,6 +77,7 @@ internal sealed class KeyboardHook : IDisposable
         using var curProcess = System.Diagnostics.Process.GetCurrentProcess();
         using var curModule = curProcess.MainModule!;
         _hookId = SetWindowsHookEx(WH_KEYBOARD_LL, _proc, GetModuleHandle(curModule.ModuleName), 0);
+        DebugLog.Write($"KeyboardHook.Install -> hookId={_hookId} lastError={Marshal.GetLastWin32Error()}");
     }
 
     public void Uninstall()
@@ -78,30 +87,50 @@ internal sealed class KeyboardHook : IDisposable
         _hookId = IntPtr.Zero;
     }
 
+    private static bool IsNavigationKey(uint vk) => vk switch
+    {
+        0x21 or 0x22 or 0x23 or 0x24 or 0x25 or 0x26 or 0x27 or 0x28 or 0x2E => true, // PgUp/PgDn/End/Home/Left/Up/Right/Down/Delete
+        _ => false,
+    };
+
     private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
     {
-        if (nCode >= 0 && (wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_SYSKEYDOWN))
+        if (nCode >= 0 && (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN))
         {
             var hookStruct = Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam);
 
-            if (hookStruct.vkCode == VK_BACK)
+            // Eigene injizierte Tastenanschläge nicht erneut verarbeiten.
+            if (hookStruct.dwExtraInfo != InjectedMarker)
             {
-                BackspacePressed?.Invoke();
-            }
-            else if (hookStruct.vkCode == VK_RETURN)
-            {
-                EnterPressed?.Invoke();
-            }
-            else
-            {
-                var keyboardState = new byte[256];
-                GetKeyboardState(keyboardState);
-                var sb = new StringBuilder(8);
-                int result = ToUnicode(hookStruct.vkCode, hookStruct.scanCode, keyboardState, sb, sb.Capacity, 0);
-                if (result > 0)
+                if (hookStruct.vkCode == VK_BACK)
                 {
-                    foreach (char c in sb.ToString())
-                        CharacterTyped?.Invoke(c);
+                    BackspacePressed?.Invoke();
+                }
+                else if (hookStruct.vkCode == VK_RETURN)
+                {
+                    EnterPressed?.Invoke();
+                }
+                else if (IsNavigationKey(hookStruct.vkCode))
+                {
+                    NavigationKeyPressed?.Invoke();
+                }
+                else
+                {
+                    var keyboardState = new byte[256];
+                    GetKeyboardState(keyboardState);
+                    var sb = new StringBuilder(8);
+                    int result = ToUnicode(hookStruct.vkCode, hookStruct.scanCode, keyboardState, sb, sb.Capacity, 0);
+                    if (result > 0)
+                    {
+                        var text = sb.ToString();
+                        DebugLog.Write($"key vk={hookStruct.vkCode:X2} -> '{text}'");
+                        foreach (char c in text)
+                            CharacterTyped?.Invoke(c);
+                    }
+                    else
+                    {
+                        DebugLog.Write($"key vk={hookStruct.vkCode:X2} -> ToUnicode={result}");
+                    }
                 }
             }
         }

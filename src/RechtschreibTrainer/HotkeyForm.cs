@@ -8,7 +8,8 @@ internal sealed class HotkeyForm : Form
 {
     private const int WM_HOTKEY = 0x0312;
 
-    public event Action? HotkeyPressed;
+    /// <summary>Feuert mit der Hotkey-ID (siehe RegisterHotKey-Aufrufe in TrayApp).</summary>
+    public event Action<int>? HotkeyPressed;
 
     public HotkeyForm()
     {
@@ -25,7 +26,7 @@ internal sealed class HotkeyForm : Form
     {
         if (m.Msg == WM_HOTKEY)
         {
-            HotkeyPressed?.Invoke();
+            HotkeyPressed?.Invoke(m.WParam.ToInt32());
         }
         base.WndProc(ref m);
     }
