@@ -1,5 +1,82 @@
 # Projekt-Log — Rechtschreib-Trainer (Windows)
 
+## 2026-09-05 – Phase 0 erledigt: die Messlatte steht, Ausgangszahlen gemessen
+
+**Was:** Der Benchmark aus Plan-Phase 0 ist gebaut und liefert zum ersten Mal
+harte Zahlen.
+
+- `tests/RechtschreibTrainer.Core.Tests/benchmark-faelle.tsv` — **206
+  beschriftete Fälle** aus `keystrokes.log` und `korrekturen.jsonl`, in vier
+  Kategorien: `tippfehler` (muss korrigiert werden), `gross` (klein getipptes
+  Substantiv/Eigenname), `korrekt` (darf nicht angefasst werden) und `kontext`
+  (nur mit Satzzusammenhang entscheidbar, wird getrennt ausgewiesen).
+- `BenchmarkTests.cs` — rechnet Präzision, Trefferquote und Fehlalarmrate aus
+  und listet jeden Fehlgriff namentlich auf.
+- `RepoFiles.cs` — lädt die echten Wortlisten und Vertipper-Dateien genau in
+  der Reihenfolge, in der das laufende Programm sie lädt. Die persönliche
+  `woerterbuch.txt` bleibt bewusst außen vor: gemessen wird der
+  Auslieferungszustand, nicht ein einzelner PC.
+
+**Die Ausgangsmessung (2026-09-05, vor jeder Verbesserung):**
+
+| Kennzahl | Stand | Ziel |
+|---|---|---|
+| Präzision (von allem, was angefasst wird: wie viel war richtig) | **94,9 %** (94 von 99) | ≥ 98 % |
+| Trefferquote (von allen nötigen Änderungen) | **82,5 %** (94 von 114) | ≥ 90 % |
+| Fehlalarme (korrektes Wort angefasst) | **1,3 %** (1 von 78) | ≈ 0 % |
+| Kontextabhängige Fälle fälschlich angefasst | 8 von 14 | Phase 4 |
+
+**Der wichtigste Befund: Alle vier Falschersetzungen sind Umlaut-Fälle.**
+
+```
+moechte  -> mochte    (erwartet: möchte)
+waehrend -> wahrend   (erwartet: während)
+gruen    -> grauen    (erwartet: grün)
+schoen   -> Schonen   (erwartet: schön)
+```
+
+Dazu kommen sechs weitere übersehene Wörter aus demselben Grund (`fuer`,
+`ueberhauot`, `naemlih`, `zustaedig`, `ausfuerhren`, `auffaekt`). Die
+Ersatzschreibung `ue/oe/ae` ist damit **die mit Abstand größte einzelne
+Fehlerquelle** — und genau das, was die Hunspell-`REP`-Tabelle aus Phase 2
+ohne jedes Raten löst. `gruen → grauen` zeigt auch, warum: Weil `ue → ü`
+unbekannt ist, rät der Korrektor stattdessen wild in der Wortliste herum.
+
+**Weitere Erkenntnis:** Ein Teil der im Log protokollierten Fehlgriffe ist
+durch die Fixes vom 2026-09-04 **bereits behoben**. `skill→kill`,
+`fuer→Feuer`, `datri→dari`, `ganzen→Ganzen`, `icht→nicht`, `kkann→kann`,
+`ernn→renn` und `obne→oben` passieren heute nicht mehr — das Programm lässt
+diese Wörter jetzt in Ruhe. Die Ausgangslage ist also besser als der rohe Log
+vermuten ließ.
+
+**Verbleibender Fehlalarm:** `codest → Codes` — hier zerstört der Rateschritt
+ein korrektes Wort.
+
+**Entscheidungen:**
+- Der Benchmark-Test arbeitet als **Ratsche**: Geprüft wird gegen den zuletzt
+  erreichten Stand, nicht gegen das Endziel. Damit ist die Testsuite grün,
+  schlägt aber sofort an, wenn eine Änderung die Qualität verschlechtert.
+  Wird etwas besser, werden die Konstanten `StandPraezision` /
+  `StandTrefferquote` / `StandFehlalarme` in `BenchmarkTests.cs` hochgesetzt.
+  Ein dauerhaft roter Test wäre wertlos — den schaut nach zwei Wochen niemand
+  mehr an.
+- Kontextabhängige Fälle werden **getrennt** ausgewiesen und nicht in die
+  Hauptkennzahlen eingerechnet. Sie sind vor Phase 4 prinzipiell nicht
+  lösbar; sie in die Zahlen zu mischen, würde den Fortschritt verschleiern.
+
+**Stand danach:** 115 Tests grün (vorher 113). Kein Produktivcode geändert —
+nur Messung.
+
+**Offene Punkte / Nächste Schritte:**
+- **Phase 1:** Ersetz-Verzögerung (`SettleTime` 130 ms bei 188 ms echtem
+  Tastenabstand) und automatische Passwortfeld-Erkennung. Achtung: Dieser
+  Fehler ist im Benchmark **nicht sichtbar**, weil er beim Ersetzen im echten
+  Textfeld entsteht, nicht in der Logik. Er braucht einen eigenen Test bzw.
+  eine manuelle Prüfung.
+- **Phase 2:** Umlaut-Ersetzungstabelle nach Hunspell-Vorbild — laut Messung
+  der größte Hebel: behebt 4 von 5 Falschersetzungen und 6 von 16 übersehenen
+  Fällen.
+
 ## 2026-09-05 – Qualitätsplan, Recherche und vollständige Systemdokumentation
 
 **Was:** Kein Code geändert — drei neue Dokumente und eine überarbeitete

@@ -1,0 +1,239 @@
+# Benchmark-Faelle fuer die Korrekturqualitaet (Phase 0).
+# Format:  getippt <TAB> erwartet <TAB> kategorie
+#
+# Alle Faelle werden im Kontext "mitten im Satz" geprueft (kein Satzanfang).
+# Quelle: keystrokes.log und korrekturen.jsonl des Nutzers, 2026-09-03/04.
+#
+# Kategorien:
+#   tippfehler  echter Vertipper -> muss zu "erwartet" korrigiert werden
+#   gross       klein getipptes Substantiv/Eigenname -> muss gross werden
+#   korrekt     richtig getippt -> darf NICHT angefasst werden (erwartet = -)
+#   kontext     darf nicht angefasst werden, ist aber nur mit Satzkontext
+#               entscheidbar -> wird getrennt ausgewiesen, siehe Plan Phase 4
+
+# ---------------------------------------------------------------- tippfehler
+nocg	noch	tippfehler
+cih	ich	tippfehler
+icg	ich	tippfehler
+ih	ich	tippfehler
+veressert	verbessert	tippfehler
+jezt	jetzt	tippfehler
+jetz	jetzt	tippfehler
+seperat	separat	tippfehler
+vielleciht	vielleicht	tippfehler
+erstmla	erstmal	tippfehler
+irgenwie	irgendwie	tippfehler
+funktioneirt	funktioniert	tippfehler
+funkitoniert	funktioniert	tippfehler
+wirlich	wirklich	tippfehler
+naemlih	nämlich	tippfehler
+zustaedig	zuständig	tippfehler
+schleht	schlecht	tippfehler
+optmmierst	optimierst	tippfehler
+vorhergen	vorherigen	tippfehler
+kkann	kann	tippfehler
+aknn	kann	tippfehler
+deie	deine	tippfehler
+obne	oben	tippfehler
+richrig	richtig	tippfehler
+richtg	richtig	tippfehler
+ueberhauot	überhaupt	tippfehler
+eventeull	eventuell	tippfehler
+gepannt	gespannt	tippfehler
+gepannnt	gespannt	tippfehler
+scgauen	schauen	tippfehler
+auc	auch	tippfehler
+auhc	auch	tippfehler
+frae	frage	tippfehler
+benuzen	benutzen	tippfehler
+korretur	korrektur	tippfehler
+korogirt	korrigiert	tippfehler
+korriegrt	korrigiert	tippfehler
+korriegert	korrigiert	tippfehler
+korrigeirt	korrigiert	tippfehler
+personlaissierter	personalisierter	tippfehler
+iennfach	einfach	tippfehler
+eifnach	einfach	tippfehler
+witer	weiter	tippfehler
+shcnlell	schnell	tippfehler
+ahben	haben	tippfehler
+spannedn	spannend	tippfehler
+spannednd	spannend	tippfehler
+makieren	markieren	tippfehler
+ausfuerhren	ausführen	tippfehler
+auffaekt	auffällt	tippfehler
+udn	und	tippfehler
+nichr	nicht	tippfehler
+nihct	nicht	tippfehler
+wnen	wenn	tippfehler
+wiel	weil	tippfehler
+shcon	schon	tippfehler
+abre	aber	tippfehler
+oer	oder	tippfehler
+
+# Umlaut-Ersatzschreibung (ue/oe/ae) - heute nicht abgedeckt, Plan Phase 2
+moechte	möchte	tippfehler
+fuer	für	tippfehler
+waehrend	während	tippfehler
+gruen	grün	tippfehler
+schoen	schön	tippfehler
+
+# Klassische Rechtschreibfehler
+nähmlich	nämlich	tippfehler
+wärend	während	tippfehler
+ziehmlich	ziemlich	tippfehler
+Standart	Standard	tippfehler
+agressiv	aggressiv	tippfehler
+Maschiene	Maschine	tippfehler
+Ingeneur	Ingenieur	tippfehler
+Reperatur	Reparatur	tippfehler
+intressant	interessant	tippfehler
+offiziel	offiziell	tippfehler
+
+# -------------------------------------------------------------------- gross
+computer	Computer	gross
+projekt	Projekt	gross
+bildschirm	Bildschirm	gross
+maus	Maus	gross
+problem	Problem	gross
+monitor	Monitor	gross
+monitore	Monitore	gross
+account	Account	gross
+zugang	Zugang	gross
+verkäufer	Verkäufer	gross
+unternehmer	Unternehmer	gross
+mäuse	Mäuse	gross
+tastatur	Tastatur	gross
+tastaturen	Tastaturen	gross
+knopf	Knopf	gross
+mischung	Mischung	gross
+anlagen	Anlagen	gross
+schutz	Schutz	gross
+fehler	Fehler	gross
+sitzung	Sitzung	gross
+korrektur	Korrektur	gross
+ordner	Ordner	gross
+datei	Datei	gross
+dateien	Dateien	gross
+stick	Stick	gross
+system	System	gross
+ende	Ende	gross
+montag	Montag	gross
+freitag	Freitag	gross
+guthaben	Guthaben	gross
+befehl	Befehl	gross
+nachricht	Nachricht	gross
+text	Text	gross
+wort	Wort	gross
+
+# Eigennamen - exakte Schreibweise
+iphone	iPhone	gross
+github	GitHub	gross
+windows	Windows	gross
+python	Python	gross
+claude	Claude	gross
+thomas	Thomas	gross
+berlin	Berlin	gross
+
+# ------------------------------------------------------------------ korrekt
+# Funktionswoerter, Verben, Adjektive - muessen klein und unveraendert bleiben
+und	-	korrekt
+oder	-	korrekt
+aber	-	korrekt
+weil	-	korrekt
+wenn	-	korrekt
+dass	-	korrekt
+sollst	-	korrekt
+einfach	-	korrekt
+alles	-	korrekt
+verbessern	-	korrekt
+genauso	-	korrekt
+besser	-	korrekt
+nichts	-	korrekt
+damit	-	korrekt
+glaube	-	korrekt
+neues	-	korrekt
+erkennt	-	korrekt
+welchem	-	korrekt
+nervig	-	korrekt
+meinem	-	korrekt
+denke	-	korrekt
+sogar	-	korrekt
+primär	-	korrekt
+andere	-	korrekt
+spannend	-	korrekt
+ausprobieren	-	korrekt
+umformuliert	-	korrekt
+richtig	-	korrekt
+guter	-	korrekt
+anlegen	-	korrekt
+irgendwann	-	korrekt
+vielleicht	-	korrekt
+hinzufügen	-	korrekt
+schnelleren	-	korrekt
+tippe	-	korrekt
+direkt	-	korrekt
+offline	-	korrekt
+läuft	-	korrekt
+werden	-	korrekt
+gespannt	-	korrekt
+schneller	-	korrekt
+tippen	-	korrekt
+analysieren	-	korrekt
+überhaupt	-	korrekt
+funktionieren	-	korrekt
+wichtig	-	korrekt
+benutzen	-	korrekt
+möchte	-	korrekt
+personalisierter	-	korrekt
+markieren	-	korrekt
+ausführen	-	korrekt
+korrigiert	-	korrekt
+optimierst	-	korrekt
+zuständig	-	korrekt
+schlecht	-	korrekt
+wirklich	-	korrekt
+irgendwie	-	korrekt
+funktioniert	-	korrekt
+codest	-	korrekt
+skill	-	korrekt
+repo	-	korrekt
+
+# Bereits richtig geschriebene Substantive - duerfen nicht veraendert werden
+Computer	-	korrekt
+Ordner	-	korrekt
+Datei	-	korrekt
+Tastatur	-	korrekt
+Fehler	-	korrekt
+Korrektur	-	korrekt
+Nachricht	-	korrekt
+Haus	-	korrekt
+Häuser	-	korrekt
+
+# Komposita - stehen in keiner Wortliste, muessen trotzdem in Ruhe gelassen werden
+Kältekreislauf	-	korrekt
+Nutzungslimit	-	korrekt
+Trainingsdaten	-	korrekt
+Rechtschreibkorrektur	-	korrekt
+Tastaturbelegung	-	korrekt
+Bildschirmrand	-	korrekt
+Hauptfokus	-	korrekt
+Autokorrektur	-	korrekt
+
+# ------------------------------------------------------------------ kontext
+# Nur mit Satzkontext entscheidbar (nominalisierbare Verben/Adjektive,
+# Homographen). Werden getrennt ausgewiesen - Ziel von Plan-Phase 4.
+besten	-	kontext
+gucken	-	kontext
+schauen	-	kontext
+bauen	-	kontext
+brauche	-	kontext
+aktiv	-	kontext
+drei	-	kontext
+dies	-	kontext
+ganzen	-	kontext
+essen	-	kontext
+laufen	-	kontext
+gehen	-	kontext
+machen	-	kontext
+sein	-	kontext
