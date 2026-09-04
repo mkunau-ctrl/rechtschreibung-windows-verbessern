@@ -245,12 +245,25 @@ Wikipedia-Tippfehlerliste (CC BY-SA), Leipzig Corpora (CC BY), GitHub Typo
 Corpus (Lizenz folgt den Ursprungs-Repos — für das *Ableiten einer
 Häufigkeitstabelle* unkritisch, für das Mitliefern von Rohtext nicht).
 
-## Offene Fragen an dich
+## Entschieden (2026-09-05, mit dem Nutzer abgestimmt)
 
-1. Reihenfolge wie vorgeschlagen (erst messen, dann Timing, dann sichere
-   Ersetzungen), oder willst du die Tastatur-Distanz vorziehen?
-2. Wie viel Rechenzeit/Speicher darf das Programm beim Start brauchen? Bigramme
-   und Distanz-2-Index kosten Arbeitsspeicher (Größenordnung einige hundert MB,
-   je nach Umfang).
-3. Soll Phase 4 (Kontext) wirklich rein? Sie ist der größte Brocken und der
-   einzige Punkt, an dem das Programm mehr als ein Wort im Speicher hält.
+1. **Reihenfolge: 0 → 1 → 2 wie vorgeschlagen.** Erst die Messlatte, dann der
+   Wettlauf beim Ersetzen, dann die sicheren Ersetzungen. Nach Phase 2 wird
+   anhand der Zahlen neu bewertet, wie viel von Phase 3 noch nötig ist.
+2. **Speicherbudget: bis ~500 MB, Start darf 2–3 Sekunden dauern.** Damit sind
+   Bigramme in voller Größe und ein Distanz-2-Index möglich; es wird jeweils
+   die genauere Variante gewählt. Der tatsächliche Verbrauch wird nach jeder
+   Phase gemessen und im Log festgehalten.
+3. **Phase 4 (Kontext/Bigramme) ist gesetzt** — ohne Satzkontext ist die
+   Groß-/Kleinschreibung nicht sicher zu lösen und 90 % sind nicht erreichbar.
+   Auflage: Das Wortfenster (letzte 1–2 Wörter) bleibt **ausschließlich im
+   Arbeitsspeicher**, wird bei Fokuswechsel, Mausklick und Pause sofort
+   verworfen und **niemals in eine Datei geschrieben**. Das ist beim Bauen
+   von Phase 4 als Test abzusichern, nicht nur als Vorsatz.
+
+## Startpunkt für die Umsetzung
+
+Phase 0, erste Aufgabe: alle 82 Korrekturen aus `korrekturen.jsonl` gegen den
+heutigen Stand nachrechnen und feststellen, welche der oben aufgelisteten
+Fehlgriffe überhaupt noch auftreten. Das ist gleichzeitig der erste Baustein
+des Benchmarks und die ehrliche Ausgangszahl.
