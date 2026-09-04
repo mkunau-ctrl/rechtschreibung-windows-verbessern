@@ -27,10 +27,15 @@ internal sealed class TrayApp : ApplicationContext
     private readonly HotkeySettings _keys;
 
     private readonly System.Windows.Forms.Timer _focusTimer;
+    private readonly System.Windows.Forms.Timer _debounce;
 
     private IntPtr _lastForeground;
     private DateTime _lastActivity = DateTime.Now;
+    private DateTime _lastKeystroke = DateTime.Now;
+    private WordCompleted? _pendingWord;
     private int _correctionCount;
+
+    private static readonly TimeSpan SettleTime = TimeSpan.FromMilliseconds(130);
 
     public TrayApp()
     {
@@ -72,13 +77,20 @@ internal sealed class TrayApp : ApplicationContext
         _keyboard.CharacterTyped += c => Post(() => OnChar(c));
         _keyboard.BackspacePressed += () => Post(OnBackspace);
         _keyboard.EnterPressed += () => Post(OnEnter);
-        _keyboard.NavigationKeyPressed += () => Post(_watcher.Invalidate);
-        _mouse.ClickDetected += () => Post(_watcher.Invalidate);
+        _keyboard.NavigationKeyPressed += () => Post(DropContext);
+        _mouse.ClickDetected += () => Post(DropContext);
         _watcher.WordCompleted += w =>
         {
             DebugLog.Write($"WordCompleted '{w.Word}' boundary={(w.Boundary == '\n' ? "\\n" : w.Boundary.ToString())} satzanfang={w.Context.IsSentenceStart}");
-            _controller.HandleWord(w);
+            _pendingWord = w;
         };
+
+        // Kurz warten, bevor ein Wort ersetzt wird: tippt der Nutzer sofort
+        // weiter, würden die simulierten Rücktasten in das nächste Wort
+        // hineinlaufen. ~130 ms Pause = fertig getippt, sicher zu ersetzen.
+        _debounce = new System.Windows.Forms.Timer { Interval = 40 };
+        _debounce.Tick += (_, _) => MaybeCorrectPendingWord();
+        _debounce.Start();
 
         _focusTimer = new System.Windows.Forms.Timer { Interval = 1000 };
         _focusTimer.Tick += (_, _) => CheckContextStillValid();
@@ -107,21 +119,40 @@ internal sealed class TrayApp : ApplicationContext
 
     private void OnChar(char c)
     {
-        _lastActivity = DateTime.Now;
+        _lastActivity = _lastKeystroke = DateTime.Now;
         _watcher.OnChar(c);
         if (_recording.IsActive) _recording.AppendChar(c);
     }
 
     private void OnBackspace()
     {
-        _lastActivity = DateTime.Now;
+        _lastActivity = _lastKeystroke = DateTime.Now;
+        // Der Nutzer bessert selbst nach — nichts mehr automatisch ersetzen.
+        _pendingWord = null;
         _watcher.OnBackspace();
         if (_recording.IsActive) _recording.AppendBackspace();
     }
 
+    private void DropContext()
+    {
+        _pendingWord = null;
+        _watcher.Invalidate();
+    }
+
+    private void MaybeCorrectPendingWord()
+    {
+        if (_pendingWord is not { } word)
+            return;
+        if (DateTime.Now - _lastKeystroke < SettleTime)
+            return; // noch am Tippen — später nochmal
+
+        _pendingWord = null;
+        _controller.HandleWord(word);
+    }
+
     private void OnEnter()
     {
-        _lastActivity = DateTime.Now;
+        _lastActivity = _lastKeystroke = DateTime.Now;
         _watcher.OnEnter();
         if (_recording.IsActive) _recording.AppendNewline();
     }
@@ -132,11 +163,11 @@ internal sealed class TrayApp : ApplicationContext
         if (current != _lastForeground)
         {
             _lastForeground = current;
-            _watcher.Invalidate();
+            DropContext();
         }
         else if ((DateTime.Now - _lastActivity).TotalSeconds > 4)
         {
-            _watcher.Invalidate();
+            DropContext();
         }
     }
 
@@ -302,6 +333,7 @@ internal sealed class TrayApp : ApplicationContext
             _recording.StopAndFlush(AppPaths.KeystrokeLog);
 
         _focusTimer.Stop();
+        _debounce.Stop();
         _keyboard.Dispose();
         _mouse.Dispose();
         Win32.UnregisterHotKey(_hotkeyForm.Handle, HotkeyRecord);

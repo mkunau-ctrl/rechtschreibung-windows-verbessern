@@ -51,7 +51,8 @@ internal static class DictionaryLoader
             File.ReadLines(AppPaths.WordListFile),
             Optional(AppPaths.FrequencyFile),
             Optional(AppPaths.NounFile),
-            Optional(AppPaths.KeepLowercaseFile));
+            Optional(AppPaths.KeepLowercaseFile),
+            Optional(AppPaths.BundledNames).Concat(Optional(AppPaths.UserNames)));
         return new SpellCorrector(list, SpellSettings.Default);
     }
 }

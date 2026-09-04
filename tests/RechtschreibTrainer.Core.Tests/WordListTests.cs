@@ -80,4 +80,22 @@ public class WordListTests
     {
         Assert.False(Build().IsCapitalisedOnly("kältekreislauf"));
     }
+
+    [Fact]
+    public void ReturnsTheExactFormOfAProperNoun()
+    {
+        var list = WordList.FromLines([], [], properNouns: ["GitHub", "iPhone", "Montag"]);
+
+        Assert.Equal("GitHub", list.ProperNoun("github"));
+        Assert.Equal("iPhone", list.ProperNoun("iphone"));
+        Assert.Equal("Montag", list.ProperNoun("montag"));
+    }
+
+    [Fact]
+    public void ReturnsNullForAWordThatIsNotAProperNoun()
+    {
+        var list = WordList.FromLines([], [], properNouns: ["GitHub"]);
+
+        Assert.Null(list.ProperNoun("haus"));
+    }
 }

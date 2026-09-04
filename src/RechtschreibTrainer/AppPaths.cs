@@ -36,5 +36,11 @@ internal static class AppPaths
     /// <summary>Wörter, die klein bleiben, auch wenn es gleichlautende Substantive gibt.</summary>
     public static string KeepLowercaseFile => Path.Combine(AppContext.BaseDirectory, "data", "klein-schreiben.txt");
 
+    /// <summary>Mitgelieferte Namen/Eigennamen (exakte Schreibweise) neben der .exe.</summary>
+    public static string BundledNames => Path.Combine(AppContext.BaseDirectory, "data", "namen.txt");
+
+    /// <summary>Eigene Namen des Nutzers, im Datenordner, editierbar.</summary>
+    public static string UserNames => Path.Combine(DataDir, "eigene-namen.txt");
+
     public static void EnsureDataDir() => Directory.CreateDirectory(DataDir);
 }

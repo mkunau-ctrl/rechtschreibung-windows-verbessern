@@ -8,7 +8,7 @@ public readonly record struct SpellSettings(int MinLength, double Dominance)
     /// anderen, und der beste Kandidat muss den zweitbesten klar schlagen —
     /// sonst lieber nichts tun als falsch ersetzen.
     /// </summary>
-    public static SpellSettings Default => new(MinLength: 4, Dominance: 2.0);
+    public static SpellSettings Default => new(MinLength: 4, Dominance: 1.6);
 }
 
 /// <summary>
@@ -47,6 +47,10 @@ public sealed class SpellCorrector
         if (word.Length < _settings.MinLength)
             return null;
 
+        // Name/Eigenname (GitHub, iPhone, Montag) — exakte Schreibweise erzwingen.
+        if (_words.ProperNoun(word) is { } proper && !string.Equals(proper, word, StringComparison.Ordinal))
+            return proper;
+
         if (_words.Knows(word))
         {
             // Richtig geschrieben — aber vielleicht ein klein getipptes Substantiv?
@@ -77,6 +81,9 @@ public sealed class SpellCorrector
             return null;
 
         var best = ranked[0].Word;
+
+        if (_words.ProperNoun(best) is { } properBest)
+            return properBest;
 
         // Ein Substantiv gehört groß, egal wie der Nutzer es getippt hat.
         if (_words.IsCapitalisedOnly(best.ToLowerInvariant()))

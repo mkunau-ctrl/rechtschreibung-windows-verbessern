@@ -15,7 +15,7 @@
     <None Update="klassische-fehler.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <!-- Deutsche Wortliste + Häufigkeiten + Substantive, siehe data/HERKUNFT.md -->
+    <!-- Wortliste + Häufigkeiten + Substantive + Namen, siehe data/HERKUNFT.md -->
     <Content Include="..\..\data\*.txt" Link="data\%(Filename)%(Extension)"
              CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

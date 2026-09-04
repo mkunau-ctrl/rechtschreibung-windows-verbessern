@@ -24,7 +24,8 @@ public class RealDataSpellingTests
                 File.ReadLines(Path.Combine(data, "woerter.txt")),
                 File.ReadLines(Path.Combine(data, "haeufigkeit.txt")),
                 File.ReadLines(Path.Combine(data, "substantive.txt")),
-                File.ReadLines(Path.Combine(data, "klein-schreiben.txt"))),
+                File.ReadLines(Path.Combine(data, "klein-schreiben.txt")),
+                File.ReadLines(Path.Combine(data, "namen.txt"))),
             SpellSettings.Default);
     });
 
@@ -112,6 +113,18 @@ public class RealDataSpellingTests
     [InlineData("computer", "Computer")]
     [InlineData("berlin", "Berlin")]
     public void CapitalisesLowercaseNouns(string typed, string want)
+    {
+        Assert.Equal(want, Corrector.Value.Suggest(typed));
+    }
+
+    [Theory]
+    [InlineData("github", "GitHub")]
+    [InlineData("windows", "Windows")]
+    [InlineData("python", "Python")]
+    [InlineData("claude", "Claude")]
+    [InlineData("berlin", "Berlin")]
+    [InlineData("thomas", "Thomas")]
+    public void RestoresProperNounsExactly(string typed, string want)
     {
         Assert.Equal(want, Corrector.Value.Suggest(typed));
     }

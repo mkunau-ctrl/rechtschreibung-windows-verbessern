@@ -13,17 +13,20 @@ public sealed class WordList
     private readonly HashSet<string> _words;              // case-insensitiv: "kennt das Programm das Wort?"
     private readonly HashSet<string> _nouns;              // großgeschriebene Substantivformen
     private readonly HashSet<string> _keepLowercase;      // Wörter, die klein bleiben (Verben, Homographen …)
+    private readonly Dictionary<string, string> _properNouns; // klein -> exakte Schreibweise (GitHub, iPhone …)
     private readonly Dictionary<string, long> _frequency;
 
     private WordList(
         HashSet<string> words,
         HashSet<string> nouns,
         HashSet<string> keepLowercase,
+        Dictionary<string, string> properNouns,
         Dictionary<string, long> frequency)
     {
         _words = words;
         _nouns = nouns;
         _keepLowercase = keepLowercase;
+        _properNouns = properNouns;
         _frequency = frequency;
     }
 
@@ -33,7 +36,8 @@ public sealed class WordList
         IEnumerable<string> words,
         IEnumerable<string> frequencyLines,
         IEnumerable<string>? nouns = null,
-        IEnumerable<string>? keepLowercase = null)
+        IEnumerable<string>? keepLowercase = null,
+        IEnumerable<string>? properNouns = null)
     {
         var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var exact = new HashSet<string>(StringComparer.Ordinal);
@@ -48,6 +52,17 @@ public sealed class WordList
 
         var nounSet = ReadSet(nouns, StringComparer.Ordinal);
         var keepLower = ReadSet(keepLowercase, StringComparer.OrdinalIgnoreCase);
+
+        var proper = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var raw in properNouns ?? [])
+        {
+            var w = raw.Trim();
+            if (w.Length > 0 && !w.StartsWith('#'))
+            {
+                proper.TryAdd(w.ToLowerInvariant(), w);
+                set.Add(w);
+            }
+        }
 
         // Ohne eigene Substantivliste dient die Wortliste selbst als Näherung:
         // ein Wort, das nur großgeschrieben vorkommt, gilt als Substantiv.
@@ -66,8 +81,12 @@ public sealed class WordList
                 freq[parts[0]] = n;
         }
 
-        return new WordList(set, nounSet, keepLower, freq);
+        return new WordList(set, nounSet, keepLower, proper, freq);
     }
+
+    /// <summary>Exakte Schreibweise, wenn das Wort ein Name/Eigenname ist (GitHub, iPhone, Montag); sonst null.</summary>
+    public string? ProperNoun(string word)
+        => _properNouns.TryGetValue(word, out var exact) ? exact : null;
 
     private static HashSet<string> ReadSet(IEnumerable<string>? lines, StringComparer comparer)
     {
