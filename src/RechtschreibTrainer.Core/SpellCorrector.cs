@@ -28,7 +28,16 @@ public sealed class SpellCorrector
     private const double WeightTransposition = 1.0; // Buchstaben vertauscht
     private const double WeightOmission = 1.0;      // Buchstabe vergessen
     private const double WeightInsertion = 0.9;     // Buchstabe zu viel
-    private const double WeightSubstitution = 0.45; // falscher Buchstabe
+    private const double WeightSubstitution = 0.45; // falscher Buchstabe, keine Nachbartaste
+
+    /// <summary>
+    /// Falscher Buchstabe, aber auf der Tastatur direkt neben dem richtigen —
+    /// so wahrscheinlich wie ein zu viel getippter Buchstabe. Das ist die
+    /// Tastatur-Distanz aus dem Noisy-Channel-Modell: ein Danebengriff auf die
+    /// Nachbartaste ist etwas anderes als ein Buchstabe von der anderen Seite
+    /// der Tastatur.
+    /// </summary>
+    private const double WeightAdjacentSubstitution = WeightInsertion;
 
     private readonly WordList _words;
     private readonly SpellSettings _settings;
@@ -149,7 +158,13 @@ public sealed class SpellCorrector
             foreach (var c in Alphabet)
             {
                 if (right.Length > 0 && full)
-                    Consider(left + c + right[1..], WeightSubstitution);   // falscher Buchstabe
+                {
+                    var weight = KeyboardLayout.AreNeighbours(c, right[0])
+                        ? WeightAdjacentSubstitution
+                        : WeightSubstitution;
+                    Consider(left + c + right[1..], weight);                // falscher Buchstabe
+                }
+
                 Consider(left + c + right, WeightOmission);                // Buchstabe vergessen
             }
         }

@@ -183,4 +183,42 @@ public class OfflineCorrectorTests
 
         Assert.False(result.HasCorrection);
     }
+
+    [Fact]
+    public void KombiniertErsatzschreibungMitEinemWeiterenVertipper()
+    {
+        // "zustaedig" ist zwei Fehler von "zuständig" entfernt: ae->ä UND ein
+        // vergessenes n. Die Ersatzschreibung allein findet kein bekanntes
+        // Wort ("zustädig" fehlt in der Liste) - erst das anschließende Raten
+        // auf der aufgelösten Form findet den letzten Buchstaben.
+        var result = WithSpelling([], "zuständig")
+            .Correct("zustaedig", new WordContext(IsSentenceStart: false));
+
+        Assert.Equal("zuständig", result.Corrected);
+        Assert.Equal(CorrectionSource.Spelling, result.Source);
+    }
+
+    [Fact]
+    public void VerkettungRuehrtEinBereitsKorrektesWortNichtAn()
+    {
+        // Belegter Fehlgriff: "besser" (korrekt) -> "beßer" (ss->ß, unbekannt)
+        // -> geraten zu einem seltenen, aber existierenden Wort. Auch die
+        // Verkettung muss die "schon richtig"-Absicherung respektieren.
+        var result = WithSpelling([], "besser", "beißer")
+            .Correct("besser", new WordContext(IsSentenceStart: false));
+
+        Assert.False(result.HasCorrection);
+    }
+
+    [Fact]
+    public void KombiniertErsatzschreibungNichtAufBruchstuecken()
+    {
+        // Das Verketten ist ein Raten (zwei Fehler kombiniert) - auf einem
+        // möglichen Wort-Bruchstück bleibt das aus, anders als die reine,
+        // ungeratene Ersatzschreibung.
+        var result = WithSpelling([], "zuständig")
+            .Correct("zustaedig", new WordContext(IsSentenceStart: false, AllowSpellGuess: false));
+
+        Assert.False(result.HasCorrection);
+    }
 }

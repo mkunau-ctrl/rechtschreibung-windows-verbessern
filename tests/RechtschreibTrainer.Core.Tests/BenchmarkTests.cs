@@ -166,11 +166,16 @@ public class BenchmarkTests
     // 2026-09-05, Phase 2 (Ersatzschreibung ue/oe/ae/ss vor jedem Raten):
     //   Praezision 99,0 % | Trefferquote 86,8 % | Fehlalarme 1,3 % (unveraendert)
     //   -> Praezisionsziel (98%) erreicht. Alle 4 Falschersetzungen behoben.
+    // 2026-09-05, Phase 3 (Tastatur-Distanz + Ersatzschreibung-Verkettung):
+    //   Praezision 99,0 % (unveraendert) | Trefferquote 90,4 % | Fehlalarme 1,3 %
+    //   -> BEIDE Ziele aus dem Plan erreicht (Praezision >=98%, Trefferquote >=90%).
+    //   Volle Distanz-2-Suche und Koelner Phonetik daher zurueckgestellt, siehe
+    //   Plan-Nachtrag und PROJEKT-LOG.md.
     private const double StandPraezision = 0.990;
-    private const double StandTrefferquote = 0.868;
+    private const double StandTrefferquote = 0.903; // exakt 103/114 = 0,90350...
     private const double StandFehlalarme = 0.013;
 
-    // ---- Das Ziel aus dem Plan (noch nicht erreicht). ----
+    // ---- Das Ziel aus dem Plan (erreicht am 2026-09-05, Phase 3). ----
     private const double ZielPraezision = 0.98;
     private const double ZielTrefferquote = 0.90;
 

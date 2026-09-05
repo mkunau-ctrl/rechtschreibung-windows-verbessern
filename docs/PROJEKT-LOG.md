@@ -1,5 +1,64 @@
 # Projekt-Log — Rechtschreib-Trainer (Windows)
 
+## 2026-09-05 – Phase 3: Tastatur-Distanz + Verkettung — beide Zielwerte erreicht
+
+**Was:** Zwei neue Bausteine in der Korrektur-Logik.
+
+1. **`KeyboardLayout.cs`** — QWERTZ-Tastatur-Nachbarschaft nach dem Vorbild
+   der Aspell-`.kbd`-Dateien: eine Liste, welche Tasten in derselben Reihe
+   nebeneinander liegen (inkl. `ü/ö/ä`). `SpellCorrector` gewichtet einen
+   „falschen Buchstaben" jetzt höher (`0.9` statt `0.45`), wenn die getippte
+   Taste neben der richtigen liegt — ein Danebengriff auf die Nachbartaste
+   ist genauso plausibel wie ein vergessener Buchstabe.
+2. **Verkettung Ersatzschreibung→Raten** (`OfflineCorrector.TryReplacementThenSpelling`)
+   — für Wörter mit **zwei Fehlern auf einmal**: Erst die Ersatzschreibung
+   auflösen (auch wenn das Ergebnis noch kein bekanntes Wort ist), dann den
+   Rest vom Fuzzy-Raten erledigen lassen. Fängt `zustaedig→zustädig→zuständig`
+   und `ausfuerhren→ausführhren→ausführen`.
+
+**Ergebnis (Benchmark):**
+
+| Kennzahl | Vorher (Phase 2) | Jetzt (Phase 3) | Ziel |
+|---|---|---|---|
+| Präzision | 99,0 % | 99,0 % (unverändert) | ≥ 98 % ✅ |
+| Trefferquote | 86,8 % | **90,4 %** | ≥ 90 % ✅ |
+| Fehlalarme | 1,3 % | 1,3 % (unverändert) | ≈ 0 % |
+
+**Beide Zielwerte des Qualitätsplans sind damit erreicht.**
+
+**Ein Fehlgriff beim Bauen entdeckt und sofort behoben:** Die neue Verkettung
+hätte `besser` (korrekt) über die Ersatzschreibung `beßer` zu einem seltenen,
+aber existierenden Wort (`Beißer`) verfälscht — die „schon richtig, nicht
+anfassen"-Absicherung aus Phase 2 fehlte in der Verkettung. Ergänzt, mit
+eigenem Regressionstest (`VerkettungRuehrtEinBereitsKorrektesWortNichtAn`).
+Genau das Risiko, vor dem im Recherche-Dokument bei `ss→ß` gewarnt wurde.
+
+**Entscheidungen:**
+- **Komposita-Zerlegung, volle Editierdistanz-2-Suche und Kölner Phonetik
+  wurden bewusst zurückgestellt**, weil beide Zielwerte bereits ohne sie
+  erreicht waren. Die verbleibenden elf übersehenen Fälle
+  (`korogirt`, `personlaissierter`, `iennfach`, `shcnlell` …) sind mehrfache
+  Vertipper, die eine echte Distanz-2-Suche bräuchten — die wäre ohne
+  Komposita-Schutz riskant (zerstört echte Wortzusammensetzungen) und ohne
+  SymSpell-artigen Index spürbar langsam. Aufwand und Risiko stehen für den
+  verbleibenden Nutzen nicht mehr im Verhältnis. Ausführliche Begründung im
+  Plan-Nachtrag.
+- Tastatur-Nachbarschaft bewusst **nur Nachbarn in derselben Reihe**
+  (keine Diagonalen) — einfach, defensiv, deckt den wichtigen Teil der Fälle.
+
+**Stand danach:** 145 Tests grün (vorher 131).
+
+**Offene Punkte / Nächste Schritte:**
+- Alltagstest der Phase-1-Ersetzung durch den Nutzer steht weiterhin aus.
+- Der eine verbliebene Fehlalarm `codest→Codes` (Fuzzy-Raten) — noch nicht
+  untersucht, gehört zu keinem der bisherigen Bausteine.
+- Komposita-Zerlegung/Distanz-2/Kölner Phonetik: zurückgestellt, siehe oben —
+  erst bei konkretem neuem Bedarf wieder aufgreifen.
+- **Als Nächstes (auf Wunsch des Nutzers):** ein Test mit einem
+  zusammenhängenden ~200-Wörter-Fließtext, um die Korrekturquote im
+  realistischen Lesefluss zu prüfen — anders als der bestehende Benchmark,
+  der einzelne Wörter isoliert testet.
+
 ## 2026-09-05 – Phase 2: Ersatzschreibung (ue/oe/ae/ss) — Präzisionsziel erreicht
 
 **Was:** Neue Klasse `ReplacementTable.cs` mit den deutschen Ersatzschreibungen

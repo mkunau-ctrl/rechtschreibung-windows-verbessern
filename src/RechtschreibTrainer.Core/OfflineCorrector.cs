@@ -84,6 +84,16 @@ public sealed class OfflineCorrector
                 current = fromSpelling;
                 source = CorrectionSource.Spelling;
             }
+            // Zwei Fehler auf einmal: Ersatzschreibung UND ein weiterer
+            // Vertipper ("zustaedig" -> "zustädig" (Ersatzschreibung, aber
+            // unbekannt) -> "zuständig" (Raten)). Das ist ein echtes Raten
+            // (kombiniert zwei Fehlerquellen), deshalb hinter AllowSpellGuess.
+            else if (context.AllowSpellGuess && _spelling is not null
+                && TryReplacementThenSpelling(current, _spelling, out var viaChain))
+            {
+                current = viaChain;
+                source = CorrectionSource.Spelling;
+            }
         }
 
         if (context.IsSentenceStart && current.Length > 0 && char.IsLower(current[0]))
@@ -117,6 +127,35 @@ public sealed class OfflineCorrector
                 continue;
             resolved = candidate;
             return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Löst eine Ersatzschreibung auf und lässt den Rest vom Fuzzy-Raten
+    /// erledigen — für Wörter mit zwei Fehlern auf einmal (Ersatzschreibung
+    /// plus ein zusätzlicher Vertipper). Läuft nur, wenn die direkte
+    /// Ersatzschreibung (<see cref="TryReplacement"/>) schon gescheitert ist,
+    /// also nichts kostet, solange das Wort keine Ersatzform enthält.
+    /// </summary>
+    private static bool TryReplacementThenSpelling(string word, SpellCorrector spelling, out string resolved)
+    {
+        resolved = word;
+
+        // Dieselbe Absicherung wie bei TryReplacement: Ist das Wort selbst
+        // schon richtig, wird nichts angefasst (sonst z. B. "besser" ->
+        // "beßer" -> geraten zu einem ganz anderen, selten bekannten Wort).
+        if (spelling.IsKnownWord(word))
+            return false;
+
+        foreach (var candidate in ReplacementTable.Candidates(word))
+        {
+            if (spelling.Suggest(candidate) is { } suggestion)
+            {
+                resolved = suggestion;
+                return true;
+            }
         }
 
         return false;

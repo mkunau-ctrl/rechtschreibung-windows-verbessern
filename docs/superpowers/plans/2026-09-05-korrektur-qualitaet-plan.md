@@ -321,6 +321,51 @@ Auf beliebigem Fremdtext erreichen gängige Korrektoren nur ein F-Maß um 0,5.
 gebaut wird** — nicht aus zufälligem deutschen Text. Das ist keine
 Schummelei, sondern genau das Ziel: Das Ding soll *dich* verstehen.
 
+## Nachtrag 2026-09-05, Teil 2: Phasen 0–3 durchgeführt — beide Ziele erreicht
+
+Gemessen mit dem Benchmark aus Phase 0 (206 Fälle aus den echten Logs):
+
+| Kennzahl | Ausgang (Phase 0) | Nach Phase 1+2 | Nach Phase 3 | Ziel |
+|---|---|---|---|---|
+| Präzision | 94,9 % | 99,0 % | **99,0 %** | ≥ 98 % ✅ |
+| Trefferquote | 82,5 % | 86,8 % | **90,4 %** | ≥ 90 % ✅ |
+| Fehlalarme | 1,3 % | 1,3 % | 1,3 % | ≈ 0 % |
+
+**Phase 3 wurde bewusst nur teilweise umgesetzt**, weil die beiden
+Zielwerte bereits mit den risikoärmeren Bausteinen erreicht waren:
+
+- **Umgesetzt:** QWERTZ-Tastatur-Nachbarschaft (`KeyboardLayout.cs`, nach
+  Aspell-`.kbd`-Vorbild) gewichtet einen falschen Buchstaben höher, wenn die
+  getippte Taste neben der richtigen liegt. Dazu die Verkettung
+  Ersatzschreibung→Raten (`zustaedig→zustädig→zuständig`) für Wörter mit zwei
+  Fehlern auf einmal.
+- **Absichtlich zurückgestellt**, weil das Ziel schon erreicht war und der
+  Aufwand/das Risiko den verbleibenden Nutzen nicht mehr rechtfertigt:
+  - **Komposita-Zerlegung (Phase 2b)** — nötig als Absicherung, *bevor*
+    Distanz 2 aktiviert wird, aber ohne Distanz 2 nicht dringend.
+  - **Volle Editierdistanz-2-Suche** — die verbleibenden 11 übersehenen
+    Fälle (`korogirt`, `personlaissierter`, `iennfach`, `shcnlell` …) sind
+    mehrfache Vertipper (Vertauschung + Auslassung kombiniert). Eine
+    brauchbare Distanz-2-Suche bräuchte einen SymSpell-artigen Index — die
+    naive zweistufige Kandidatengenerierung wäre für jedes getippte Wort
+    spürbar langsam und würde ohne den Komposita-Schutz echte
+    Wortzusammensetzungen gefährden.
+  - **Kölner Phonetik** — keine der verbleibenden Fälle ist ein phonetischer
+    Fehler; ohne konkreten Bedarf hätte sie nur neues Fehlalarm-Risiko
+    eingeführt.
+- **Ein neuer Fehlgriff wurde beim Bauen entdeckt und sofort behoben:** Die
+  Verkettung Ersatzschreibung→Raten hätte `besser` (korrekt) über `beßer` zu
+  `Beißer` verfälscht. Die „schon ein bekanntes Wort → nicht anfassen"-
+  Absicherung aus Phase 2 fehlte in der neuen Verkettung und wurde ergänzt,
+  mit eigenem Regressionstest.
+
+**Bewertung:** Beide Zielwerte des Plans sind erreicht. Die verbleibenden elf
+übersehenen Fälle sind harte Mehrfach-Vertipper, für die sich der
+Aufwand von Komposita-Zerlegung + Distanz-2-Index + Kölner Phonetik erst dann
+lohnt, wenn ein neuer, konkreter Bedarf (z. B. aus dem 200-Wörter-Fließtext-
+Test oder aus neuen echten Logs) das rechtfertigt. Bis dahin bleiben sie im
+Benchmark als dokumentierte, bekannte Lücke stehen.
+
 ## Startpunkt für die Umsetzung
 
 Phase 0, erste Aufgabe: alle 82 Korrekturen aus `korrekturen.jsonl` gegen den

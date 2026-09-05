@@ -49,8 +49,13 @@ Der ganze Ablauf in einem Durchgang:
       geraten, sondern nur aufgelöst wird. **Absicherung:** Ist das getippte
       Wort selbst schon bekannt, wird nichts angefasst — sonst würde `Masse`
       (korrekt) zu `Maße` (ein anderes Wort) verfälscht.
-   5. Sonst **raten** lassen (`SpellCorrector`, nur wenn `AllowSpellGuess`).
-   6. Zuletzt unabhängig davon: Ist **Satzanfang** und das Wort klein? → groß
+   5. Löst eine Ersatzschreibung **plus ein weiterer Vertipper** zusammen ein
+      bekanntes Wort auf (`zustaedig` → `zustädig` (Ersatzschreibung, noch
+      unbekannt) → `zuständig` (Raten))? → das nehmen. Anders als Schritt 4
+      ist das ein echtes Raten (zwei Fehlerquellen kombiniert), läuft deshalb
+      nur mit `AllowSpellGuess` und respektiert dieselbe „schon richtig"-Absicherung.
+   6. Sonst **raten** lassen (`SpellCorrector`, nur wenn `AllowSpellGuess`).
+   7. Zuletzt unabhängig davon: Ist **Satzanfang** und das Wort klein? → groß
       schreiben.
 
 6. **Raten (nur wenn nötig).** `SpellCorrector` arbeitet gegen die große
@@ -67,8 +72,12 @@ Der ganze Ablauf in einem Durchgang:
      alle.
    - Bewertung: Zuerst zählt die **Fehlerart** (vergessen/vertauscht gelten
      als wahrscheinlicher als danebengegriffen), erst danach die
-     **Worthäufigkeit**. Der beste Kandidat muss den zweitbesten um den Faktor
-     **1,6** schlagen — sonst wird **nichts** ersetzt.
+     **Worthäufigkeit**. Ein „falscher Buchstabe" zählt dabei **nicht
+     einheitlich**: Liegt die getippte Taste auf der QWERTZ-Tastatur direkt
+     neben der richtigen (`KeyboardLayout.AreNeighbours`, z. B. `e`/`r`), wird
+     das genauso hoch gewertet wie ein vergessener Buchstabe — eine Taste von
+     der anderen Tastaturhälfte dagegen niedriger. Der beste Kandidat muss den
+     zweitbesten um den Faktor **1,6** schlagen — sonst wird **nichts** ersetzt.
 
 7. **Ersetzen.** `LiveCorrectionController` rechnet aus, wie viele Zeichen weg
    müssen (Wort + Grenzzeichen + inzwischen Getipptes), und ruft `Replacer`:
@@ -117,7 +126,8 @@ Kein Windows, keine Dateizugriffe im Kern, alles unit-testbar.
 | `OfflineCorrector.cs` | Die Entscheidungskette (Nie-Liste → Wörterbuch → Regeln → Raten → Satzanfang). Definiert auch `WordContext`, `CorrectionResult` und `CorrectionSource`. |
 | `CorrectionDictionary.cs` | Feste Ersetzungen im Format `falsch=richtig`. Späterer Eintrag gewinnt. Kennt den Groß-/Kleinschreibungs-Sonderfall am Satzanfang. |
 | `CorrectionRules.cs` | Drei fest verdrahtete Muster-Regeln: `scg→sch` überall, `cg→ch` am Wortende, `cih→ich` am Wortanfang. |
-| `ReplacementTable.cs` | Feste Ersatzschreibungen nach Hunspell-`REP`-Vorbild: `ue→ü`, `oe→ö`, `ae→ä`, `ss→ß`. Liefert Kandidaten; `OfflineCorrector` prüft, ob einer davon ein bekanntes Wort ergibt. |
+| `ReplacementTable.cs` | Feste Ersatzschreibungen nach Hunspell-`REP`-Vorbild: `ue→ü`, `oe→ö`, `ae→ä`, `ss→ß`. Liefert Kandidaten; `OfflineCorrector` prüft, ob einer davon ein bekanntes Wort ergibt — oder speist ihn zusätzlich ins Raten ein, wenn noch ein zweiter Fehler dazukommt. |
+| `KeyboardLayout.cs` | QWERTZ-Tastatur-Nachbarschaft (nach Aspell-`.kbd`-Vorbild, nur Nachbarn in derselben Reihe). Sagt `SpellCorrector`, ob ein falscher Buchstabe ein plausibler Danebengriff war. |
 | `SpellCorrector.cs` | Das Raten gegen die große Wortliste (Damerau-Abstand 1, Gewichte, Dominanz-Schwelle). `SpellSettings` hält die Stellschrauben. |
 | `WordList.cs` | Die geladenen Wortlisten im Speicher: kennt Wörter, Häufigkeiten, Substantive, Eigennamen und die „bleibt klein"-Ausnahmen. |
 | `LiveCorrectionController.cs` | Bindeglied: nimmt fertige Wörter, holt die Korrektur, stößt Ersetzung + Protokoll an, verwaltet Rückgängig. Kennt kein Windows — Ersetzen und Loggen sind Rückrufe. |

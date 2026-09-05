@@ -138,4 +138,22 @@ public class SpellCorrectorTests
 
         Assert.Equal("Montag", c.Suggest("montg"));
     }
+
+    // ---- Tastatur-Distanz (Phase 3) ----
+
+    [Fact]
+    public void BevorzugtEinenDanebengriffAufDieNachbartasteVorWeitEntferntenTasten()
+    {
+        // "wetter" (letztes 'r' statt 'e' getippt - r/e sind Nachbarn) gegen
+        // "wetten" (letztes 'n' statt 'e' - n/e liegen weit auseinander).
+        // "wetten" ist häufiger, aber die Nachbartaste ist der plausiblere
+        // Vertipper und muss trotzdem gewinnen.
+        var c = Build(["wetter", "wetten"], "wetter 10", "wetten 100000");
+
+        Assert.Equal("wetter", c.Suggest("wettee"));
+    }
+
+    // "Ohne Tastaturnähe entscheidet weiterhin die Häufigkeit" ist bereits
+    // durch PicksTheMoreCommonWordWhenTheEditIsTheSameKind abgedeckt
+    // (u->a und u->o sind auf der QWERTZ-Tastatur beides keine Nachbarn).
 }
