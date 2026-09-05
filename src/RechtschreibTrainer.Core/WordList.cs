@@ -44,7 +44,7 @@ public sealed class WordList
         foreach (var raw in words)
         {
             var w = raw.Trim();
-            if (w.Length == 0)
+            if (w.Length == 0 || w.StartsWith('#'))
                 continue;
             set.Add(w);
             exact.Add(w);

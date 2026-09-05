@@ -48,7 +48,7 @@ internal static class DictionaryLoader
             File.Exists(path) ? File.ReadLines(path) : [];
 
         var list = WordList.FromLines(
-            File.ReadLines(AppPaths.WordListFile),
+            File.ReadLines(AppPaths.WordListFile).Concat(Optional(AppPaths.DenglischVerbs)),
             Optional(AppPaths.FrequencyFile),
             Optional(AppPaths.NounFile),
             Optional(AppPaths.KeepLowercaseFile),

@@ -39,6 +39,17 @@ public class WordListTests
     }
 
     [Fact]
+    public void SkipsCommentLinesInTheWordList()
+    {
+        // Mitgelieferte Zusatzlisten (z. B. denglisch-verben.txt) haben einen
+        // Kommentarkopf mit "#" - der darf nicht als Wort landen.
+        var list = WordList.FromLines(["# Kommentar", "codest"], []);
+
+        Assert.True(list.Knows("codest"));
+        Assert.False(list.Knows("# Kommentar"));
+    }
+
+    [Fact]
     public void ReadsFrequencies()
     {
         Assert.Equal(12345, Build().Frequency("noch"));

@@ -41,7 +41,8 @@ public static class RepoFiles
 
     /// <summary>Die grosse Wortliste, so wie das Programm sie laedt.</summary>
     public static WordList LoadWordList() => WordList.FromLines(
-        File.ReadLines(Path.Combine(DataDir, "woerter.txt")),
+        File.ReadLines(Path.Combine(DataDir, "woerter.txt"))
+            .Concat(Optional(Path.Combine(BundledDir, "denglisch-verben.txt"))),
         Optional(Path.Combine(DataDir, "haeufigkeit.txt")),
         Optional(Path.Combine(DataDir, "substantive.txt")),
         Optional(Path.Combine(DataDir, "klein-schreiben.txt")),

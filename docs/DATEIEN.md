@@ -153,6 +153,7 @@ Kein Windows, keine Dateizugriffe im Kern, alles unit-testbar.
 | `Win32.cs` | Die Windows-Funktionsaufrufe (`RegisterHotKey`, `GetForegroundWindow` …). |
 | `standard-vertipper.txt` | Mitgelieferte Vertipper-Liste (deine ersten Mitschnitte + häufige deutsche Dreher). |
 | `klassische-fehler.txt` | Mitgelieferte Liste klassischer Rechtschreibfehler (`seperat=separat`, `Standart=Standard` …). Nur eindeutige Fälle, nichts Kontextabhängiges. |
+| `denglisch-verben.txt` | Eingedeutschte englische Tech-Verben (`coden`, `committen`, `pushen`, `mergen`, `deployen` …) als **bekannte Wörter** (keine Ersetzung) — verhindert, dass z. B. `codest` fälschlich zu `Codes` geraten wird. |
 
 ### `tests/`
 

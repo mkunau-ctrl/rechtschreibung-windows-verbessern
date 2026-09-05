@@ -24,6 +24,9 @@ internal static class AppPaths
     /// <summary>Mitgelieferte Liste klassischer deutscher Rechtschreibfehler.</summary>
     public static string ClassicMistakes => Path.Combine(AppContext.BaseDirectory, "klassische-fehler.txt");
 
+    /// <summary>Mitgelieferte eingedeutschte englische Tech-Verben (coden, committen, pushen …).</summary>
+    public static string DenglischVerbs => Path.Combine(AppContext.BaseDirectory, "denglisch-verben.txt");
+
     /// <summary>Deutsche Wortformen, neben der .exe im Unterordner data.</summary>
     public static string WordListFile => Path.Combine(AppContext.BaseDirectory, "data", "woerter.txt");
 

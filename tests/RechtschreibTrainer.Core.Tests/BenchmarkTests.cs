@@ -171,9 +171,11 @@ public class BenchmarkTests
     //   -> BEIDE Ziele aus dem Plan erreicht (Praezision >=98%, Trefferquote >=90%).
     //   Volle Distanz-2-Suche und Koelner Phonetik daher zurueckgestellt, siehe
     //   Plan-Nachtrag und PROJEKT-LOG.md.
-    private const double StandPraezision = 0.990;
+    // 2026-09-05, denglisch-verben.txt (Fix fuer "codest" -> "Codes"):
+    //   Praezision 100,0 % | Trefferquote 90,4 % (unveraendert) | Fehlalarme 0,0 %
+    private const double StandPraezision = 1.0;
     private const double StandTrefferquote = 0.903; // exakt 103/114 = 0,90350...
-    private const double StandFehlalarme = 0.013;
+    private const double StandFehlalarme = 0.0;
 
     // ---- Das Ziel aus dem Plan (erreicht am 2026-09-05, Phase 3). ----
     private const double ZielPraezision = 0.98;

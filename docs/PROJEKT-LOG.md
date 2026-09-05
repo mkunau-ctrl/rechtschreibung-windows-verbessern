@@ -1,5 +1,59 @@
 # Projekt-Log — Rechtschreib-Trainer (Windows)
 
+## 2026-09-05 – Programm installiert; letzter Fehlalarm behoben (100 % Präzision)
+
+**Was:** Zwei Dinge.
+
+1. **Erstinstallation mit Autostart.** `scripts/install.ps1` ausgeführt — bis
+   dahin lief nichts von alledem tatsächlich auf dem Rechner, alles war nur
+   Quellcode + Tests. Läuft jetzt unter
+   `%LOCALAPPDATA%\RechtschreibTrainer\RechtschreibTrainer.exe`, Autostart-
+   Verknüpfung im Windows-Startordner.
+2. **`codest → Codes` behoben** (der letzte offene Fehlalarm aus Phase 2/3).
+   Ursache: `codest` ("du codest" — Denglisch, 2. Person von "coden") stand
+   in keiner Wortliste, fiel deshalb ins Fuzzy-Raten und wurde zu `Codes`
+   (Plural von "der Code", Editierdistanz 1) verfälscht — eine Ersetzung
+   ohne jeden Bezug zur Absicht des Nutzers. Neue Datei
+   `src/RechtschreibTrainer/denglisch-verben.txt`: eingedeutschte
+   Tech-Verben (`coden/codest/codet/gecodet`, `committen`, `pushen`,
+   `mergen`, `deployen`, `forken`, `clonen`, `debuggen`, `builden`,
+   `releasen`, `taggen`, je mit Konjugationen) als **bekannte Wörter** — sie
+   werden dadurch nie mehr angefasst, weil `SpellCorrector` ein bereits
+   bekanntes Wort grundsätzlich in Ruhe lässt.
+
+Nebenbei behoben: `WordList.FromLines` überlas Kommentarzeilen (`#`) in der
+Haupt-Wortliste bisher nicht (nur in den Substantiv-/Namenslisten) — hätte
+sonst den Kommentarkopf der neuen Datei als „Wort" eingelesen.
+
+**Warum:** Der Nutzer bat um Weiterarbeit ohne konkrete Vorgabe; das war der
+letzte konkret benannte, klar abgegrenzte offene Punkt aus der letzten
+Zusammenfassung.
+
+**Ergebnis (Benchmark):**
+
+| Kennzahl | Vorher | Jetzt |
+|---|---|---|
+| Präzision | 99,0 % | **100,0 %** |
+| Trefferquote | 90,4 % | 90,4 % (unverändert) |
+| Fehlalarme | 1,3 % | **0,0 %** |
+
+**Entscheidung:** Als eigene, bewusst kleine Wortliste angelegt (nicht in
+`woerterbuch.txt` oder `standard-vertipper.txt`), weil es **bekannte Wörter**
+sind, keine Ersetzungen — das ist ein anderer Mechanismus
+(`WordList`/`SpellCorrector.IsKnownWord`, nicht `CorrectionDictionary`).
+
+**Stand danach:** 147 Tests grün (vorher 146). Programm läuft installiert
+mit dem neuesten Stand.
+
+**Offene Punkte / Nächste Schritte:**
+- Alltagstest der Phase-1-Ersetzung durch den Nutzer steht weiterhin aus —
+  jetzt aber am tatsächlich laufenden, installierten Programm möglich.
+- Phase 4 (Kontext/Bigramme) — größter verbleibender Hebel laut
+  Fließtext-Benchmark.
+- 11 hartnäckige Mehrfach-Vertipper — bräuchten Distanz-2 + Komposita-Schutz.
+- Automatisches Lernen aus `korrekturen.jsonl`/`keystrokes.log` (Plan-Phase 5,
+  der ursprüngliche Wunsch des Nutzers) — noch nicht begonnen.
+
 ## 2026-09-05 – Fließtext-Benchmark: Gesamtquote 93,3 %, Phase-4-Lücke bestätigt
 
 **Was:** Neuer Test `PassageBenchmarkTests.cs`, ergänzend zum wort-isolierten
