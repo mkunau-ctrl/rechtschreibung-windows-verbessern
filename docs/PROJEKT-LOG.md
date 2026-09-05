@@ -1,5 +1,35 @@
 # Projekt-Log — Rechtschreib-Trainer (Windows)
 
+## 2026-09-05 – Deployment-Bug gefunden: `install.ps1` baute vor dem Stoppen
+
+**Was:** Beim Verifizieren von Phase 5 (siehe nächster Log-Eintrag) fiel auf,
+dass `woerterbuch.txt` nach der Neuinstallation **leer** blieb, obwohl die
+Kernlogik (per Test gegen das echte Log geprüft) klar 7 Kandidaten fand.
+Ursache: `scripts/install.ps1` rief `dotnet publish` auf, **bevor** der alte
+Prozess gestoppt wurde. Lief die alte Version noch, hielt sie ihre eigene
+`.dll` gesperrt — `dotnet publish` überschreibt eine gesperrte Datei nicht
+zuverlässig (kein Fehler, einfach stillschweigend die alte Datei behalten).
+Das Skript meldete trotzdem „Fertig.", und der neu gestartete Prozess lief
+in Wirklichkeit **mit dem alten Codestand weiter**.
+
+**Reihenfolge in `install.ps1` getauscht:** jetzt erst `Stop-Process`, dann
+erst `dotnet publish`.
+
+**Tragweite:** Die Installation nach Phase 4 lief damit wahrscheinlich noch
+mit dem Stand von Phase 3 — der alte Prozess aus der Phase-3-Installation
+war zu dem Zeitpunkt ja noch aktiv. Die Phase-4-Verbesserungen (Tastatur-
+Distanz-Gewichtung, Großschreibung mit Artikel-Kontext) waren also
+möglicherweise nie tatsächlich live, bis zu diesem Fix. Nach dem Fix erneut
+installiert und **verifiziert**: `woerterbuch.txt` enthält jetzt exakt die
+erwarteten 7 gelernten Einträge (`nocg=noch`, `ordner=Ordner`, `cih=ich`,
+`seperat=separat`, `computer=Computer`, `montag=Montag`, `datei=Datei`) —
+`ich=Ich` fehlt zu Recht. Damit ist bewiesen, dass der aktuell laufende
+Prozess wirklich den neuesten Stand (inklusive Phase 4 und 5) ausführt.
+
+**Lehre für künftige Sessions:** Nach einer Neuinstallation nicht nur auf
+„Fertig." vertrauen — wo möglich, eine beobachtbare Wirkung der Änderung
+prüfen (hier: der Lern-Mechanismus selbst als Beweis).
+
 ## 2026-09-05 – Phase 5: Automatisches Lernen aus dem eigenen Korrektur-Log
 
 **Was:** Der ursprüngliche Wunsch des Nutzers, jetzt gebaut. Beim

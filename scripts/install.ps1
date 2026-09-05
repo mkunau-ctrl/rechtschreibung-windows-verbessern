@@ -28,14 +28,19 @@ if ($Uninstall) {
     return
 }
 
+# WICHTIG: Erst stoppen, dann bauen. Laeuft die alte Version noch, haelt sie
+# ihre eigene .dll gesperrt - "dotnet publish" ueberschreibt eine gesperrte
+# Datei nicht zuverlaessig, und das Programm wuerde unbemerkt in der alten
+# Version weiterlaufen (so geschehen am 2026-09-05: Phase 5 war "installiert",
+# lief aber noch mit dem Stand von Phase 4).
+Get-Process RechtschreibTrainer -ErrorAction SilentlyContinue | Stop-Process -Force
+Start-Sleep 1
+
 Write-Host "Baue Release ..."
 & dotnet publish (Join-Path $repo 'src\RechtschreibTrainer\RechtschreibTrainer.csproj') `
     -c Release -r win-x64 --self-contained false -o $target | Out-Null
 
 if (-not (Test-Path $exe)) { throw "Build fehlgeschlagen: $exe nicht gefunden." }
-
-Get-Process RechtschreibTrainer -ErrorAction SilentlyContinue | Stop-Process -Force
-Start-Sleep 1
 
 $shell = New-Object -ComObject WScript.Shell
 $sc = $shell.CreateShortcut($lnk)
