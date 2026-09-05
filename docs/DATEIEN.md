@@ -158,7 +158,7 @@ Kein Windows, keine Dateizugriffe im Kern, alles unit-testbar.
 
 | Ordner | Inhalt |
 |---|---|
-| `RechtschreibTrainer.Core.Tests/` | 109 Tests der reinen Logik. `RealDataSpellingTests.cs` ist der wichtigste: prüft gegen die **echten** Wortlisten und gegen Vertipper aus deinem Mitschnitt. |
+| `RechtschreibTrainer.Core.Tests/` | Unit-Tests der reinen Logik plus zwei Qualitäts-Benchmarks gegen die **echten** Wortlisten: `BenchmarkTests.cs` (206 isolierte, aus den echten Logs beschriftete Einzelwörter — Präzision/Trefferquote/Fehlalarme) und `PassageBenchmarkTests.cs` (ein zusammenhängender 238-Wörter-Fließtext mit programmgesteuert erzeugten Vertippern — Gesamtquote im Lesefluss). Beide laufen als **Ratsche**: Konstanten im Testcode hochsetzen, wenn sich etwas verbessert; ein Rückschritt lässt die Suite sofort rot werden. |
 | `RechtschreibTrainer.Tests/` | 4 Tests der Windows-nahen Teile (Icon, Replacer-Struktur). |
 
 ---

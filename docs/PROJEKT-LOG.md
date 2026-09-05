@@ -1,5 +1,65 @@
 # Projekt-Log — Rechtschreib-Trainer (Windows)
 
+## 2026-09-05 – Fließtext-Benchmark: Gesamtquote 93,3 %, Phase-4-Lücke bestätigt
+
+**Was:** Neuer Test `PassageBenchmarkTests.cs`, ergänzend zum wort-isolierten
+`BenchmarkTests.cs`. Ein zusammenhängender deutscher Absatz (238 Wörter, 14
+Sätze, über eine typische Alltagsbeschreibung) wird komplett durch den echten
+Korrektor geschickt — mit demselben Satzanfang-Kontext, den auch das
+laufende Programm sieht.
+
+Die Vertipper sind **programmgesteuert erzeugt** (Vertauschung, Auslassung,
+Tastatur-Nachbar-Ersetzung, ue/oe/ae/ss-Ersatzschreibung, vergessene
+Großschreibung an Satzanfängen und bei ausgewählten Substantiven), nicht von
+Hand in den Text getippt — damit sich keine Übertragungsfehler einschleichen
+und der Originaltext als zuverlässige Ziel-Referenz für den mechanischen
+Vergleich dient. 67 von 238 Wörtern bekamen einen Fehler, 171 blieben als
+Kontrolle unangetastet.
+
+**Ergebnis:**
+
+| Kennzahl | Wert |
+|---|---|
+| **Gesamtquote** (Wort am Ende korrekt) | **93,3 %** (222 von 238) |
+| Vertipper korrigiert | 89,6 % (60 von 67) |
+| Kontrollwörter unangetastet | 94,7 % (162 von 171) |
+
+**Wichtigster Befund: Alle 9 Fehlalarme sind dieselbe, schon dokumentierte
+Lücke — nur jetzt mit echten Zahlen belegt.** Stichprobe geprüft
+(`früh→Früh`, `fallen→Fallen`, `großen→Großen`, `dichten→Dichten`,
+`klarem→Klarem`, `dusche→Dusche`, `falle→Falle`): **alle sieben
+Großschreibungen existieren tatsächlich** in der echten 258k-Substantiv-Liste
+(`Falle`/`Fallen` = die Falle, `Dusche`, `Großen`/`Klarem`/`Schöne` =
+nominalisierte Adjektive, `Morgens` = Genitiv, `Überblicken` = ein
+nominalisiertes Verb, das durch den in `data/HERKUNFT.md` beschriebenen
+Filter gerutscht ist) — und **keines** steht in `klein-schreiben.txt`. Das
+ist echte deutsche Grammatik-Mehrdeutigkeit (dieselben Wörter sind je nach
+Satz Adjektiv/Verb/Adverb *oder* Substantiv), keine neue Baustelle. Ein
+blindes Eintragen in `klein-schreiben.txt` würde nur den umgekehrten Fehler
+einführen (dann bliebe `die Fallen` fälschlich klein). Das ist exakt die
+Lücke, die Plan-**Phase 4** (Satzkontext/Bigramme) schließen soll — bisher
+nur an einer kleinen, kuratierten Wortliste belegt, jetzt an echtem
+Fließtext mit einer konkreten Häufigkeit (9 von 171 Kontrollwörtern, ~5 %).
+
+Ein zusätzlicher Einzelfall (`Tanen→Tanzen` statt `Tannen`) zeigt die
+Kehrseite der Häufigkeits-Entscheidung ohne Kontext: „tanzen" ist als Verb
+weitaus häufiger als das Substantiv „Tannen", weshalb die Umgebung
+(„alten Eichen und Tannen") ohne Satzkontext nicht einfließen kann.
+
+**Entscheidung:** Kein Code geändert, um diese Homographen-Fälle zu
+kaschieren — jeder Versuch würde Präzision an anderer Stelle kosten. Als
+Ratsche festgehalten (93,2 % als Mindeststand), damit künftige Änderungen
+nicht unbemerkt schlechter werden. Der Test dient als **zweite, unabhängige
+Nachweisquelle** für den Bedarf an Phase 4, ergänzend zu den Einzelwort-Fällen
+in `benchmark-faelle.tsv`.
+
+**Stand danach:** 146 Tests grün (vorher 145).
+
+**Offene Punkte / Nächste Schritte:**
+- Phase 4 (Kontext/Bigramme) ist jetzt durch zwei unabhängige Messungen
+  begründet, nicht nur eine Vermutung.
+- Alltagstest der Phase-1-Ersetzung durch den Nutzer steht weiterhin aus.
+
 ## 2026-09-05 – Phase 3: Tastatur-Distanz + Verkettung — beide Zielwerte erreicht
 
 **Was:** Zwei neue Bausteine in der Korrektur-Logik.
