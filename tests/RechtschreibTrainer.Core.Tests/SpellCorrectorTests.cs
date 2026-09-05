@@ -156,4 +156,25 @@ public class SpellCorrectorTests
     // "Ohne Tastaturnähe entscheidet weiterhin die Häufigkeit" ist bereits
     // durch PicksTheMoreCommonWordWhenTheEditIsTheSameKind abgedeckt
     // (u->a und u->o sind auf der QWERTZ-Tastatur beides keine Nachbarn).
+
+    // ---- Mehrdeutige Substantive (Phase 4) ----
+
+    private static SpellCorrector BuildAmbiguous(string[] words, string[] nouns, params string[] ambiguousNouns)
+        => new(WordList.FromLines(words, [], nouns: nouns, ambiguousNouns: ambiguousNouns), SpellSettings.Default);
+
+    [Fact]
+    public void LaesstEinMehrdeutigesSubstantivOhneArtikelKleinGeschrieben()
+    {
+        var c = BuildAmbiguous(["fallen"], ["Fallen"], "fallen");
+
+        Assert.Null(c.Suggest("fallen", precededByDeterminer: false));
+    }
+
+    [Fact]
+    public void GrossschreibtEinMehrdeutigesSubstantivMitArtikelDavor()
+    {
+        var c = BuildAmbiguous(["fallen"], ["Fallen"], "fallen");
+
+        Assert.Equal("Fallen", c.Suggest("fallen", precededByDeterminer: true));
+    }
 }

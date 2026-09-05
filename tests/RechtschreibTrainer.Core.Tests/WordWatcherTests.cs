@@ -145,4 +145,50 @@ public class WordWatcherTests
         Assert.Equal('\n', seen[^2].Boundary);
         Assert.True(seen[^1].Context.IsSentenceStart);
     }
+
+    // ---- PrecededByDeterminer ----
+
+    [Fact]
+    public void MerktSichEinenVorangehendenArtikel()
+    {
+        var (w, seen) = Build();
+
+        Type(w, "der Fluss ");
+
+        Assert.False(seen[0].Context.PrecededByDeterminer); // "der" selbst hat kein Vorwort
+        Assert.True(seen[1].Context.PrecededByDeterminer);  // "Fluss" nach "der"
+    }
+
+    [Fact]
+    public void KeinArtikelWennDasVorwortKeinerIst()
+    {
+        var (w, seen) = Build();
+
+        Type(w, "schnell fallen ");
+
+        Assert.False(seen[1].Context.PrecededByDeterminer);
+    }
+
+    [Fact]
+    public void VerwirftDenArtikelKontextNachEinemBruch()
+    {
+        var (w, seen) = Build();
+
+        Type(w, "der ");
+        w.Invalidate(); // z. B. Mausklick dazwischen
+        Type(w, "fallen ");
+
+        Assert.False(seen[1].Context.PrecededByDeterminer);
+    }
+
+    [Fact]
+    public void ArtikelKontextGiltNurFuerDasUnmittelbarNaechsteWort()
+    {
+        var (w, seen) = Build();
+
+        Type(w, "der grosse Fluss ");
+
+        Assert.True(seen[1].Context.PrecededByDeterminer);  // "grosse" nach "der"
+        Assert.False(seen[2].Context.PrecededByDeterminer); // "Fluss" nach "grosse", nicht nach "der"
+    }
 }

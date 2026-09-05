@@ -7,7 +7,13 @@ namespace RechtschreibTrainer.Core;
 /// getippte womöglich nur als Bruchstück im Feld; dann sind exakte
 /// Wörterbuch-Treffer noch sicher, geratene Kandidaten aber nicht.
 /// </param>
-public readonly record struct WordContext(bool IsSentenceStart, bool AllowSpellGuess = true);
+/// <param name="PrecededByDeterminer">
+/// Stand direkt davor ein Artikel oder Possessivpronomen (der/die/das/ein/
+/// mein/…)? Schwaches, aber recht sicheres Indiz, dass hier ein Substantiv
+/// folgt — entscheidet bei mehrdeutigen Substantiven über die Großschreibung.
+/// </param>
+public readonly record struct WordContext(
+    bool IsSentenceStart, bool AllowSpellGuess = true, bool PrecededByDeterminer = false);
 
 /// <summary>Woher eine Korrektur stammt — für Benachrichtigung und Lern-Log.</summary>
 public enum CorrectionSource
@@ -79,7 +85,7 @@ public sealed class OfflineCorrector
                 current = fromReplacement;
                 source = CorrectionSource.Replacement;
             }
-            else if (context.AllowSpellGuess && _spelling?.Suggest(current) is { } fromSpelling)
+            else if (context.AllowSpellGuess && _spelling?.Suggest(current, context.PrecededByDeterminer) is { } fromSpelling)
             {
                 current = fromSpelling;
                 source = CorrectionSource.Spelling;
@@ -89,7 +95,7 @@ public sealed class OfflineCorrector
             // unbekannt) -> "zuständig" (Raten)). Das ist ein echtes Raten
             // (kombiniert zwei Fehlerquellen), deshalb hinter AllowSpellGuess.
             else if (context.AllowSpellGuess && _spelling is not null
-                && TryReplacementThenSpelling(current, _spelling, out var viaChain))
+                && TryReplacementThenSpelling(current, _spelling, context.PrecededByDeterminer, out var viaChain))
             {
                 current = viaChain;
                 source = CorrectionSource.Spelling;
@@ -139,7 +145,8 @@ public sealed class OfflineCorrector
     /// Ersatzschreibung (<see cref="TryReplacement"/>) schon gescheitert ist,
     /// also nichts kostet, solange das Wort keine Ersatzform enthält.
     /// </summary>
-    private static bool TryReplacementThenSpelling(string word, SpellCorrector spelling, out string resolved)
+    private static bool TryReplacementThenSpelling(
+        string word, SpellCorrector spelling, bool precededByDeterminer, out string resolved)
     {
         resolved = word;
 
@@ -151,7 +158,7 @@ public sealed class OfflineCorrector
 
         foreach (var candidate in ReplacementTable.Candidates(word))
         {
-            if (spelling.Suggest(candidate) is { } suggestion)
+            if (spelling.Suggest(candidate, precededByDeterminer) is { } suggestion)
             {
                 resolved = suggestion;
                 return true;

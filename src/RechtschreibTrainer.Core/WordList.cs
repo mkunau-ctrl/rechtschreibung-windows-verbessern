@@ -13,6 +13,7 @@ public sealed class WordList
     private readonly HashSet<string> _words;              // case-insensitiv: "kennt das Programm das Wort?"
     private readonly HashSet<string> _nouns;              // großgeschriebene Substantivformen
     private readonly HashSet<string> _keepLowercase;      // Wörter, die klein bleiben (Verben, Homographen …)
+    private readonly HashSet<string> _ambiguousNouns;     // selten gemeintes Substantiv, ohne Artikel eher nicht
     private readonly Dictionary<string, string> _properNouns; // klein -> exakte Schreibweise (GitHub, iPhone …)
     private readonly Dictionary<string, long> _frequency;
 
@@ -20,12 +21,14 @@ public sealed class WordList
         HashSet<string> words,
         HashSet<string> nouns,
         HashSet<string> keepLowercase,
+        HashSet<string> ambiguousNouns,
         Dictionary<string, string> properNouns,
         Dictionary<string, long> frequency)
     {
         _words = words;
         _nouns = nouns;
         _keepLowercase = keepLowercase;
+        _ambiguousNouns = ambiguousNouns;
         _properNouns = properNouns;
         _frequency = frequency;
     }
@@ -37,7 +40,8 @@ public sealed class WordList
         IEnumerable<string> frequencyLines,
         IEnumerable<string>? nouns = null,
         IEnumerable<string>? keepLowercase = null,
-        IEnumerable<string>? properNouns = null)
+        IEnumerable<string>? properNouns = null,
+        IEnumerable<string>? ambiguousNouns = null)
     {
         var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var exact = new HashSet<string>(StringComparer.Ordinal);
@@ -52,6 +56,7 @@ public sealed class WordList
 
         var nounSet = ReadSet(nouns, StringComparer.Ordinal);
         var keepLower = ReadSet(keepLowercase, StringComparer.OrdinalIgnoreCase);
+        var ambiguous = ReadSet(ambiguousNouns, StringComparer.OrdinalIgnoreCase);
 
         var proper = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var raw in properNouns ?? [])
@@ -81,7 +86,7 @@ public sealed class WordList
                 freq[parts[0]] = n;
         }
 
-        return new WordList(set, nounSet, keepLower, proper, freq);
+        return new WordList(set, nounSet, keepLower, ambiguous, proper, freq);
     }
 
     /// <summary>Exakte Schreibweise, wenn das Wort ein Name/Eigenname ist (GitHub, iPhone, Montag); sonst null.</summary>
@@ -110,8 +115,15 @@ public sealed class WordList
     /// großgeschriebener Form bekannt und klein kein gültiges Wort? Dann gehört
     /// es groß. Kontextfälle wie „das Essen" ↔ „wir essen" fallen hier raus,
     /// weil „essen" klein gültig ist.
+    ///
+    /// <paramref name="precededByDeterminer"/>: Stand direkt davor ein Artikel
+    /// oder Possessivpronomen (siehe <see cref="Determiners"/>)? Bei Wörtern
+    /// auf der <c>ambiguousNouns</c>-Liste — häufig ein anderes Wort, selten
+    /// ein Substantiv (z. B. „fallen"/"Fallen", „dusche"/"Dusche") — wird nur
+    /// mit diesem Beleg großgeschrieben; ohne ihn bleibt die häufigere,
+    /// klein geschriebene Lesart die sicherere Annahme.
     /// </summary>
-    public bool IsCapitalisedOnly(string lowerWord)
+    public bool IsCapitalisedOnly(string lowerWord, bool precededByDeterminer = false)
     {
         if (lowerWord.Length == 0 || !char.IsLower(lowerWord[0]))
             return false;
@@ -120,6 +132,12 @@ public sealed class WordList
             return false;
 
         var capitalised = char.ToUpperInvariant(lowerWord[0]) + lowerWord[1..];
-        return _nouns.Contains(capitalised);
+        if (!_nouns.Contains(capitalised))
+            return false;
+
+        if (_ambiguousNouns.Contains(lowerWord) && !precededByDeterminer)
+            return false;
+
+        return true;
     }
 }

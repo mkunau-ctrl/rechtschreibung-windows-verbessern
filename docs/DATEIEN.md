@@ -70,6 +70,15 @@ Der ganze Ablauf in einem Durchgang:
      Buchstabe vergessen, zu viel, vertauscht oder falsch). Bei genau 5
      Zeichen nur die harmlosen Varianten (vergessen/vertauscht), ab 6 Zeichen
      alle.
+   - **Großschreibung bei mehrdeutigen Wörtern**: Für eine kleine, kuratierte
+     Liste bekannter Mehrdeutigkeiten (`mehrdeutige-substantive.txt` — z. B.
+     `fallen`/`Fallen`, `dusche`/`Dusche`, `gucken`/`Gucken`) wird nur dann
+     großgeschrieben, wenn direkt davor ein Artikel oder Possessivpronomen
+     stand (`Determiners.cs`, von `WordWatcher` als letztes fertiges Wort
+     mitverfolgt). Ohne diesen Beleg bleibt die häufigere, klein geschriebene
+     Lesart die sicherere Annahme. Bekannte Grenze: Steht zwischen Artikel und
+     Substantiv noch ein Adjektiv (`den großen Fluss`), hilft ein einzelnes
+     Vorwort nicht — das bräuchte echtes Parsen.
    - Bewertung: Zuerst zählt die **Fehlerart** (vergessen/vertauscht gelten
      als wahrscheinlicher als danebengegriffen), erst danach die
      **Worthäufigkeit**. Ein „falscher Buchstabe" zählt dabei **nicht
@@ -128,6 +137,7 @@ Kein Windows, keine Dateizugriffe im Kern, alles unit-testbar.
 | `CorrectionRules.cs` | Drei fest verdrahtete Muster-Regeln: `scg→sch` überall, `cg→ch` am Wortende, `cih→ich` am Wortanfang. |
 | `ReplacementTable.cs` | Feste Ersatzschreibungen nach Hunspell-`REP`-Vorbild: `ue→ü`, `oe→ö`, `ae→ä`, `ss→ß`. Liefert Kandidaten; `OfflineCorrector` prüft, ob einer davon ein bekanntes Wort ergibt — oder speist ihn zusätzlich ins Raten ein, wenn noch ein zweiter Fehler dazukommt. |
 | `KeyboardLayout.cs` | QWERTZ-Tastatur-Nachbarschaft (nach Aspell-`.kbd`-Vorbild, nur Nachbarn in derselben Reihe). Sagt `SpellCorrector`, ob ein falscher Buchstabe ein plausibler Danebengriff war. |
+| `Determiners.cs` | Artikel/Possessiv-/Demonstrativpronomen (der/die/das/ein/mein/…). Signalisiert, dass das nächste Wort vermutlich ein Substantiv ist. |
 | `SpellCorrector.cs` | Das Raten gegen die große Wortliste (Damerau-Abstand 1, Gewichte, Dominanz-Schwelle). `SpellSettings` hält die Stellschrauben. |
 | `WordList.cs` | Die geladenen Wortlisten im Speicher: kennt Wörter, Häufigkeiten, Substantive, Eigennamen und die „bleibt klein"-Ausnahmen. |
 | `LiveCorrectionController.cs` | Bindeglied: nimmt fertige Wörter, holt die Korrektur, stößt Ersetzung + Protokoll an, verwaltet Rückgängig. Kennt kein Windows — Ersetzen und Loggen sind Rückrufe. |
@@ -154,6 +164,7 @@ Kein Windows, keine Dateizugriffe im Kern, alles unit-testbar.
 | `standard-vertipper.txt` | Mitgelieferte Vertipper-Liste (deine ersten Mitschnitte + häufige deutsche Dreher). |
 | `klassische-fehler.txt` | Mitgelieferte Liste klassischer Rechtschreibfehler (`seperat=separat`, `Standart=Standard` …). Nur eindeutige Fälle, nichts Kontextabhängiges. |
 | `denglisch-verben.txt` | Eingedeutschte englische Tech-Verben (`coden`, `committen`, `pushen`, `mergen`, `deployen` …) als **bekannte Wörter** (keine Ersetzung) — verhindert, dass z. B. `codest` fälschlich zu `Codes` geraten wird. |
+| `mehrdeutige-substantive.txt` | Wörter, die oft etwas anderes sind (Verb/Adjektiv) und nur mit vorangehendem Artikel großgeschrieben werden (`fallen`, `dusche`, `gucken`, `aktiv`, `drei` …). |
 
 ### `tests/`
 

@@ -39,6 +39,9 @@ internal static class AppPaths
     /// <summary>Wörter, die klein bleiben, auch wenn es gleichlautende Substantive gibt.</summary>
     public static string KeepLowercaseFile => Path.Combine(AppContext.BaseDirectory, "data", "klein-schreiben.txt");
 
+    /// <summary>Wörter, die nur mit vorangehendem Artikel großgeschrieben werden (siehe Determiners).</summary>
+    public static string AmbiguousNounsFile => Path.Combine(AppContext.BaseDirectory, "mehrdeutige-substantive.txt");
+
     /// <summary>Mitgelieferte Namen/Eigennamen (exakte Schreibweise) neben der .exe.</summary>
     public static string BundledNames => Path.Combine(AppContext.BaseDirectory, "data", "namen.txt");
 

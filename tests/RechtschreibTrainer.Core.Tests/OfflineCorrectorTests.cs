@@ -176,6 +176,22 @@ public class OfflineCorrectorTests
     }
 
     [Fact]
+    public void ReichtPrecededByDeterminerBisZurGrossschreibungsentscheidungDurch()
+    {
+        var corrector = new OfflineCorrector(
+            CorrectionDictionary.FromLines([]),
+            new SpellCorrector(
+                WordList.FromLines(["fallen"], [], nouns: ["Fallen"], ambiguousNouns: ["fallen"]),
+                SpellSettings.Default));
+
+        var ohneArtikel = corrector.Correct("fallen", new WordContext(IsSentenceStart: false, PrecededByDeterminer: false));
+        var mitArtikel = corrector.Correct("fallen", new WordContext(IsSentenceStart: false, PrecededByDeterminer: true));
+
+        Assert.False(ohneArtikel.HasCorrection);
+        Assert.Equal("Fallen", mitArtikel.Corrected);
+    }
+
+    [Fact]
     public void KeineErsetzungWennKeineAufloesungBekanntIst()
     {
         var result = WithSpelling([], "haus")

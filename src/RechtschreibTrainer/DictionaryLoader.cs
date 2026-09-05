@@ -52,7 +52,8 @@ internal static class DictionaryLoader
             Optional(AppPaths.FrequencyFile),
             Optional(AppPaths.NounFile),
             Optional(AppPaths.KeepLowercaseFile),
-            Optional(AppPaths.BundledNames).Concat(Optional(AppPaths.UserNames)));
+            Optional(AppPaths.BundledNames).Concat(Optional(AppPaths.UserNames)),
+            Optional(AppPaths.AmbiguousNounsFile));
         return new SpellCorrector(list, SpellSettings.Default);
     }
 }

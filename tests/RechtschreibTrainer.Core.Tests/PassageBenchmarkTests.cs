@@ -187,10 +187,15 @@ public class PassageBenchmarkTests
 
         var typedOut = new List<string>();
         var correctedOut = new List<string>();
+        string? previousTyped = null;
 
         foreach (var slot in slots)
         {
-            var result = corrector.Correct(slot.Typed, new WordContext(slot.IsSentenceStart));
+            // Wie im echten Betrieb (WordWatcher): das Indiz kommt vom
+            // tatsächlich GETIPPTEN Vorwort, nicht vom beabsichtigten.
+            var precededByDeterminer = previousTyped is not null && Determiners.Contains(previousTyped);
+            var result = corrector.Correct(slot.Typed, new WordContext(slot.IsSentenceStart, PrecededByDeterminer: precededByDeterminer));
+            previousTyped = slot.Typed;
             var output = result.HasCorrection ? result.Corrected : slot.Typed;
 
             typedOut.Add(slot.Typed);
@@ -253,7 +258,16 @@ public class PassageBenchmarkTests
         // nominalisiertes Verb Überblicken) — dieselbe, schon dokumentierte
         // Lücke aus Plan-Phase 4 (Großschreibung ohne Satzkontext), hier nur
         // mit echten Zahlen aus Fließtext statt aus der Wortliste belegt.
-        const double standGesamtquote = 0.932; // exakt 222/238 = 0,93277...
+        //
+        // 2026-09-05, nach mehrdeutige-substantive.txt + PrecededByDeterminer:
+        // Gesamtquote 96,6 % (230 von 238), Fehlalarme 9 -> 2. Behoben: früh,
+        // fallen, dusche, falle, morgens, schöne (wo kein Artikel direkt davor
+        // stand). Bekannte Grenze bleibt: "großen"/"dichten" stehen direkt
+        // hinter einem Artikel, sind dort aber ein dekliniertes Adjektiv vor
+        // dem eigentlichen Substantiv ("den großen Bäumen") - das
+        // unterscheidet ein einzelnes Vorwort nicht von echter Nominalisierung
+        // ("die Großen"). Bräuchte echtes Parsen, nicht mehr nur ein Vorwort.
+        const double standGesamtquote = 0.966; // exakt 230/238 = 0,96638...
         Assert.True(quote >= standGesamtquote,
             $"RUECKSCHRITT: Gesamtquote {quote:P1} unter dem erreichten Stand {standGesamtquote:P1}");
     }

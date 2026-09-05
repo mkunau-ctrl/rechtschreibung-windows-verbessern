@@ -23,6 +23,10 @@ public sealed class WordWatcher
     // stehen — das nächste fertige Wort ist dann womöglich nur ein Bruchstück.
     private bool _mayBeFragment;
 
+    // Das zuletzt fertig getippte Wort — für PrecededByDeterminer. Wird nach
+    // jedem Kontextbruch verworfen, genau wie der Satzanfang-Zustand.
+    private string? _previousWord;
+
     public event Action<WordCompleted>? WordCompleted;
 
     private static bool IsWordChar(char c) => char.IsLetterOrDigit(c) || c is '-' or '\'';
@@ -65,6 +69,7 @@ public sealed class WordWatcher
         _word.Clear();
         _sentenceStart = false;
         _mayBeFragment = true;
+        _previousWord = null;
     }
 
     private bool Flush(char boundary)
@@ -72,9 +77,14 @@ public sealed class WordWatcher
         var emit = _word.Length > 0;
         if (emit)
         {
+            var word = _word.ToString();
+            var precededByDeterminer = _previousWord is not null && Determiners.Contains(_previousWord);
+
             WordCompleted?.Invoke(new WordCompleted(
-                _word.ToString(), boundary,
-                new WordContext(_sentenceStart, AllowSpellGuess: !_mayBeFragment)));
+                word, boundary,
+                new WordContext(_sentenceStart, AllowSpellGuess: !_mayBeFragment, PrecededByDeterminer: precededByDeterminer)));
+
+            _previousWord = word;
         }
 
         _word.Clear();

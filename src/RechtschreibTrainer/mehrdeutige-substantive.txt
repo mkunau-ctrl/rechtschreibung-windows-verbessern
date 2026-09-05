@@ -1,0 +1,32 @@
+# Woerter, die haeufig etwas anderes sind (Verb/Adjektiv/Adverb) und nur
+# selten ein Substantiv - eines pro Zeile, klein geschrieben.
+#
+# Werden nur grossgeschrieben, wenn direkt davor ein Artikel oder
+# Possessivpronomen stand (der/die/das/ein/mein/...), siehe Determiners.cs.
+# Ohne diesen Beleg bleibt die haeufigere, klein geschriebene Lesart die
+# sicherere Annahme. Belegt durch den Fliesstext-Benchmark vom 2026-09-05
+# (docs/PROJEKT-LOG.md): jedes dieser Woerter wurde beim Testen faelschlich
+# grossgeschrieben, obwohl klein gemeint.
+
+fallen
+falle
+dusche
+duschen
+großen
+dichten
+klarem
+schöne
+überblicken
+früh
+
+# Weitere, aus dem isolierten Benchmark belegt (nominalisierte Infinitive,
+# die durch den Substantiv-Filter gerutscht sind, plus echte Fachbegriffe
+# wie "das Aktiv" / "die Drei"):
+besten
+gucken
+schauen
+bauen
+brauche
+aktiv
+drei
+dies

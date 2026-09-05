@@ -366,6 +366,27 @@ lohnt, wenn ein neuer, konkreter Bedarf (z. B. aus dem 200-Wörter-Fließtext-
 Test oder aus neuen echten Logs) das rechtfertigt. Bis dahin bleiben sie im
 Benchmark als dokumentierte, bekannte Lücke stehen.
 
+## Nachtrag 2026-09-05, Teil 3: Phase 4 gezielt (nicht vollständig) umgesetzt
+
+Statt des vollen Bigramm-Systems: `Determiners.cs` + `WordWatcher` merkt sich
+das letzte Wort + kleine kuratierte Liste `mehrdeutige-substantive.txt`
+(jedes Wort gegen `data/substantive.txt` verifiziert). Großschreibung nur
+noch mit vorangehendem Artikel/Possessivpronomen als Beleg.
+
+**Ergebnis:** Isolierter Benchmark „kontextabhängige Fälle" 8/14 → 0/14
+fälschlich angefasst, Präzision/Trefferquote unverändert (100 % / 90,4 %).
+Fließtext-Benchmark 93,3 % → 96,6 %, Fehlalarme 9 → 2.
+
+**Verworfener Ansatz, bevor Code geschrieben wurde:** Häufigkeitsdaten
+(`haeufigkeit.txt`) zur Entscheidung heranziehen — die Datei ist komplett
+kleingeschrieben, `montag`/`computer`/`ordner` zeigen exakt dasselbe Muster
+wie `früh`/`fallen`. Nicht unterscheidbar, hätte funktionierende Fälle
+zerstört. Mit echten Daten geprüft und verworfen, bevor implementiert wurde.
+
+**Bewusst nicht gelöst:** Artikel+Adjektiv+Substantiv-Ketten
+(`den großen Fluss`) — ein einzelnes Vorwort kann das Adjektiv nicht von
+echter Nominalisierung unterscheiden. Bräuchte echte Wortarten-Erkennung.
+
 ## Startpunkt für die Umsetzung
 
 Phase 0, erste Aufgabe: alle 82 Korrekturen aus `korrekturen.jsonl` gegen den

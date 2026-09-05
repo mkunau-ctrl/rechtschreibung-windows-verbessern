@@ -58,7 +58,13 @@ public sealed class SpellCorrector
     /// </summary>
     public bool IsKnownWord(string word) => _words.Knows(word) || _words.ProperNoun(word) is not null;
 
-    public string? Suggest(string word)
+    /// <param name="word">Das zu prüfende Wort.</param>
+    /// <param name="precededByDeterminer">
+    /// Stand direkt davor ein Artikel/Possessivpronomen? Entscheidet bei
+    /// mehrdeutigen Substantiven (siehe <see cref="WordList.IsCapitalisedOnly"/>),
+    /// ob großgeschrieben wird.
+    /// </param>
+    public string? Suggest(string word, bool precededByDeterminer = false)
     {
         if (word.Length < _settings.MinLength)
             return null;
@@ -70,7 +76,7 @@ public sealed class SpellCorrector
         if (_words.Knows(word))
         {
             // Richtig geschrieben — aber vielleicht ein klein getipptes Substantiv?
-            return _words.IsCapitalisedOnly(word)
+            return _words.IsCapitalisedOnly(word, precededByDeterminer)
                 ? char.ToUpperInvariant(word[0]) + word[1..]
                 : null;
         }
@@ -102,7 +108,7 @@ public sealed class SpellCorrector
             return properBest;
 
         // Ein Substantiv gehört groß, egal wie der Nutzer es getippt hat.
-        if (_words.IsCapitalisedOnly(best.ToLowerInvariant()))
+        if (_words.IsCapitalisedOnly(best.ToLowerInvariant(), precededByDeterminer))
             return char.ToUpperInvariant(best[0]) + best[1..];
 
         return MatchLeadingCase(best, word);

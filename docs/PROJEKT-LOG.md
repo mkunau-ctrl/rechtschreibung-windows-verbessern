@@ -1,5 +1,75 @@
 # Projekt-Log — Rechtschreib-Trainer (Windows)
 
+## 2026-09-05 – Phase 4 (Teil): gezielte Großschreibung mit einem Wort Kontext
+
+**Was:** Statt des vollen Bigramm-Systems aus dem ursprünglichen Plan eine
+kleinere, risikoärmere Lösung für genau das Problem, das der Fließtext-Test
+aufgedeckt hatte.
+
+- **`Determiners.cs`** — Artikel/Possessiv-/Demonstrativpronomen
+  (der/die/das/ein/mein/dieser/jeder/…), eine geschlossene Wortklasse.
+- **`WordWatcher`** merkt sich jetzt das zuletzt fertig getippte Wort und
+  gibt im neuen `WordContext.PrecededByDeterminer` mit, ob direkt davor ein
+  Artikel stand. Wird wie der Satzanfang-Zustand bei jedem Kontextbruch
+  (Fokuswechsel, Klick, Navigationstaste) verworfen.
+- **`mehrdeutige-substantive.txt`** — eine kleine, kuratierte Liste von
+  Wörtern, die häufig etwas anderes sind (Verb/Adjektiv/Adverb) und nur
+  selten das gleichlautende Substantiv: `fallen`, `falle`, `dusche`,
+  `duschen`, `großen`, `dichten`, `klarem`, `schöne`, `überblicken`, `früh`
+  (aus dem Fließtext-Fund) sowie `besten`, `gucken`, `schauen`, `bauen`,
+  `brauche`, `aktiv`, `drei`, `dies` (die bisherigen 14 „kontextabhängigen"
+  Fälle aus `benchmark-faelle.tsv` — alle acht Substantivformen gegen
+  `data/substantive.txt` verifiziert, bevor sie aufgenommen wurden).
+- **`WordList.IsCapitalisedOnly`** großschreibt Wörter aus dieser Liste nur
+  noch, wenn `precededByDeterminer` zutrifft — sonst bleibt die häufigere,
+  klein geschriebene Lesart bestehen. Alle anderen Substantive (Montag,
+  Computer, GitHub …) funktionieren unverändert wie vorher.
+
+**Warum zuerst verworfen, dann so gelöst:** Erster Versuch war, die
+Häufigkeitsdaten (`haeufigkeit.txt`) heranzuziehen — Idee: wenn die
+Großschreibung im Korpus kaum vorkommt, nicht großschreiben. **Das hätte
+alles kaputt gemacht**: `haeufigkeit.txt` ist komplett kleingeschrieben
+(Standard-Vorverarbeitung von Frequenzlisten), `montag`/`computer`/`ordner`
+zeigen exakt dasselbe Muster wie `früh`/`fallen` — die Methode kann echte
+Homographen nicht von bloß klein getippten, aber eindeutigen Substantiven
+unterscheiden. Vor dem Bauen mit echten Daten geprüft, verworfen, keine Zeile
+Code dafür geschrieben.
+
+**Ergebnis:**
+
+| Test | Vorher | Jetzt |
+|---|---|---|
+| Isolierter Benchmark: „kontextabhängige Fälle" fälschlich angefasst | 8 von 14 | **0 von 14** |
+| Isolierter Benchmark: Präzision/Trefferquote/Fehlalarme | 100 % / 90,4 % / 0 % | unverändert |
+| Fließtext-Benchmark: Gesamtquote | 93,3 % | **96,6 %** (230 von 238) |
+| Fließtext-Benchmark: Fehlalarme | 9 | **2** (`großen`, `dichten`) |
+
+**Bekannte, bewusst nicht gelöste Grenze:** Steht zwischen Artikel und
+Substantiv noch ein dekliniertes Adjektiv (`den großen Fluss`,
+`einen dichten Wald`), steht der Artikel trotzdem unmittelbar vor dem
+mehrdeutigen Wort — ein einzelnes Vorwort kann das nicht von echter
+Nominalisierung (`die Großen`) unterscheiden. Das bräuchte eine echte
+Wortarten-Erkennung, die für dieses schlanke, offline arbeitende Programm
+nicht angemessen ist.
+
+**Entscheidung:** Bewusst eine kleine, von Hand geprüfte Liste statt eines
+allgemeinen Mechanismus — jedes Wort ist gegen die echte 258k-Substantivliste
+verifiziert, bevor es aufgenommen wurde. Kein Risiko für die bestehenden,
+gut funktionierenden Fälle (Montag, Computer, GitHub …), weil die alte Regel
+für alles außerhalb dieser Liste unverändert gilt.
+
+**Stand danach:** 176 Tests grün (vorher 172). Programm neu gebaut und neu
+installiert (`scripts/install.ps1`).
+
+**Offene Punkte / Nächste Schritte:**
+- Phase 4 ist damit **nicht vollständig** (kein echtes Bigramm-System, siehe
+  bekannte Grenze oben), aber der praktisch bedeutsamste Teil des in der
+  Fließtext-Messung gefundenen Problems ist behoben.
+- Alltagstest der Phase-1-Ersetzung durch den Nutzer steht weiterhin aus.
+- 11 hartnäckige Mehrfach-Vertipper — bräuchten Distanz-2 + Komposita-Schutz.
+- **Phase 5 (automatisches Lernen aus den eigenen Logs)** — der
+  ursprüngliche Wunsch des Nutzers, als Nächstes dran.
+
 ## 2026-09-05 – Programm installiert; letzter Fehlalarm behoben (100 % Präzision)
 
 **Was:** Zwei Dinge.

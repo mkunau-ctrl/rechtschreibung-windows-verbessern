@@ -109,4 +109,35 @@ public class WordListTests
 
         Assert.Null(list.ProperNoun("haus"));
     }
+
+    // ---- Mehrdeutige Substantive: nur mit vorangehendem Artikel grossschreiben ----
+
+    [Fact]
+    public void GrossschreibtEinMehrdeutigesSubstantivOhneVorangehendenArtikelNicht()
+    {
+        // "fallen" ist haeufig ein Verb ("die Blaetter fallen") und selten
+        // ein Substantiv ("in mehreren Fallen") - ohne Artikel davor bleibt
+        // es klein, auch wenn "Fallen" als Substantivform bekannt ist.
+        var list = WordList.FromLines(["fallen"], [], nouns: ["Fallen"], ambiguousNouns: ["fallen"]);
+
+        Assert.False(list.IsCapitalisedOnly("fallen", precededByDeterminer: false));
+    }
+
+    [Fact]
+    public void GrossschreibtEinMehrdeutigesSubstantivMitVorangehendemArtikel()
+    {
+        var list = WordList.FromLines(["fallen"], [], nouns: ["Fallen"], ambiguousNouns: ["fallen"]);
+
+        Assert.True(list.IsCapitalisedOnly("fallen", precededByDeterminer: true));
+    }
+
+    [Fact]
+    public void UnbedenklicheSubstantiveBrauchenKeinenArtikel()
+    {
+        // "montag" steht NICHT auf der Liste der mehrdeutigen Substantive -
+        // die alte, einfache Regel gilt unveraendert weiter.
+        var list = WordList.FromLines(["montag"], [], nouns: ["Montag"], ambiguousNouns: ["fallen"]);
+
+        Assert.True(list.IsCapitalisedOnly("montag", precededByDeterminer: false));
+    }
 }
