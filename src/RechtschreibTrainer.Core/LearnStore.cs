@@ -35,4 +35,47 @@ public static class LearnStore
         var line = JsonSerializer.Serialize(payload, Options);
         File.AppendAllText(filePath, line + Environment.NewLine, Encoding.UTF8);
     }
+
+    /// <summary>
+    /// Liest alle protokollierten Korrekturen zurück. Fehlt die Datei, kommt
+    /// eine leere Liste; eine kaputte einzelne Zeile wird übersprungen statt
+    /// die ganze Auswertung scheitern zu lassen.
+    /// </summary>
+    public static IEnumerable<CorrectionRecord> ReadAll(string filePath)
+    {
+        if (!File.Exists(filePath))
+            yield break;
+
+        foreach (var raw in File.ReadLines(filePath))
+        {
+            var line = raw.Trim().TrimStart('﻿');
+            if (line.Length == 0)
+                continue;
+
+            var record = TryParse(line);
+            if (record is not null)
+                yield return record;
+        }
+    }
+
+    private static CorrectionRecord? TryParse(string line)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(line);
+            var root = doc.RootElement;
+            var at = DateTime.Parse(
+                root.GetProperty("at").GetString()!,
+                System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.RoundtripKind);
+            var before = root.GetProperty("before").GetString()!;
+            var after = root.GetProperty("after").GetString()!;
+            var source = Enum.Parse<CorrectionSource>(root.GetProperty("source").GetString()!);
+            return new CorrectionRecord(at, before, after, source);
+        }
+        catch
+        {
+            return null; // kaputte Log-Zeile - nie die Auswertung abbrechen lassen
+        }
+    }
 }

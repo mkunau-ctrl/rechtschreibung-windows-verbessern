@@ -37,6 +37,9 @@ public sealed class CorrectionDictionary
         return new CorrectionDictionary(entries);
     }
 
+    /// <summary>Steht für dieses Wort bereits ein Eintrag da (exakte Schreibweise)?</summary>
+    public bool HasEntry(string word) => _entries.ContainsKey(word);
+
     public bool TryCorrect(string word, out string corrected)
     {
         if (_entries.TryGetValue(word, out var exact))

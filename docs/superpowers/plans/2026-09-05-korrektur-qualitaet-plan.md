@@ -387,6 +387,18 @@ zerstört. Mit echten Daten geprüft und verworfen, bevor implementiert wurde.
 (`den großen Fluss`) — ein einzelnes Vorwort kann das Adjektiv nicht von
 echter Nominalisierung unterscheiden. Bräuchte echte Wortarten-Erkennung.
 
+## Nachtrag 2026-09-05, Teil 4: Phase 5 (automatisches Lernen) umgesetzt
+
+`DictionaryDistiller.cs` (Core, testbar): zählt (vorher,nachher)-Paare aus
+`korrekturen.jsonl`, ab 3 Treffern automatischer Wörterbuch-Eintrag beim
+Programmstart, Tray-Benachrichtigung. Schließt grundsätzlich aus:
+Capitalization-Quellen (Satzanfang ist keine feste Regel — Fund gegen das
+echte Log: `ich=Ich` wäre sonst überall im Satz großgeschrieben worden),
+Wörter aus `mehrdeutige-substantive.txt`, bereits bekannte/abgelehnte Wörter.
+
+Damit sind alle sechs Phasen mindestens einmal angefasst. Phase 6 (dauerhaft
+halten) läuft bereits über die drei Ratschen-Tests mit.
+
 ## Startpunkt für die Umsetzung
 
 Phase 0, erste Aufgabe: alle 82 Korrekturen aus `korrekturen.jsonl` gegen den

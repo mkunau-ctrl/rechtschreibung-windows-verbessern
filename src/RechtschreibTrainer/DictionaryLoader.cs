@@ -14,7 +14,13 @@ internal static class DictionaryLoader
         "# Beispiel:  teh=the   oder   seperat=separat\n" +
         "# Zeilen mit # sind Kommentare. Diese Einträge haben Vorrang vor der Standardliste.\n";
 
-    public static CorrectionDictionary Load()
+    /// <summary>Ab wie vielen gleichen Korrekturen ein Wort automatisch ins Wörterbuch wandert.</summary>
+    private const int LearnThreshold = 3;
+
+    public static CorrectionDictionary Load() => Load(out _);
+
+    /// <param name="learned">Neu gelernte Einträge, für eine Benachrichtigung im Tray.</param>
+    public static CorrectionDictionary Load(out IReadOnlyList<DictionaryDistiller.Candidate> learned)
     {
         var lines = new List<string>();
 
@@ -30,9 +36,56 @@ internal static class DictionaryLoader
             File.WriteAllText(AppPaths.UserDictionary, UserFileHeader);
         }
 
+        learned = LearnFromOwnLog();
+
         lines.AddRange(File.ReadAllLines(AppPaths.UserDictionary));
 
         return CorrectionDictionary.FromLines(lines);
+    }
+
+    /// <summary>
+    /// Verdichtet den Korrektur-Log beim Programmstart: Wörter, die mindestens
+    /// <see cref="LearnThreshold"/> mal gleich korrigiert wurden und noch
+    /// nicht im Wörterbuch stehen, wandern automatisch hinein. Steht ein Wort
+    /// auf der „nie korrigieren"-Liste, wird es nie vorgeschlagen — diese
+    /// Absicherung gilt aber ohnehin zur Laufzeit unabhängig davon (siehe
+    /// <see cref="OfflineCorrector"/>), das hier verhindert nur unnötigen
+    /// Wörterbuch-Wildwuchs.
+    /// </summary>
+    private static IReadOnlyList<DictionaryDistiller.Candidate> LearnFromOwnLog()
+    {
+        // Satzanfang-Grossschreibung wird bereits in DictionaryDistiller
+        // selbst ausgeschlossen (reine Positionsregel, keine Rechtschreibung).
+        var records = LearnStore.ReadAll(AppPaths.CorrectionLog).ToList();
+        if (records.Count == 0)
+            return [];
+
+        var existing = CorrectionDictionary.FromLines(File.ReadAllLines(AppPaths.UserDictionary));
+        var neverCorrect = File.Exists(AppPaths.NeverCorrectList)
+            ? File.ReadAllLines(AppPaths.NeverCorrectList).Where(l => l.Length > 0 && !l.StartsWith('#'))
+            : [];
+        var ambiguousNouns = File.Exists(AppPaths.AmbiguousNounsFile)
+            ? File.ReadAllLines(AppPaths.AmbiguousNounsFile).Where(l => l.Length > 0 && !l.StartsWith('#'))
+            : [];
+
+        var exclude = new HashSet<string>(neverCorrect, StringComparer.OrdinalIgnoreCase);
+        exclude.UnionWith(ambiguousNouns); // dieselbe Begruendung: braucht Satzkontext, keine feste Regel
+        exclude.UnionWith(records.Select(r => r.Before).Where(existing.HasEntry));
+
+        var candidates = DictionaryDistiller.Distill(records, exclude, LearnThreshold);
+        if (candidates.Count == 0)
+            return candidates;
+
+        var newLines = new List<string>
+        {
+            "",
+            $"# Automatisch gelernt am {DateTime.Now:yyyy-MM-dd} (mindestens {LearnThreshold}x gleich korrigiert):",
+        };
+        newLines.AddRange(candidates.Select(c => $"{c.Before}={c.After}"));
+
+        File.AppendAllLines(AppPaths.UserDictionary, newLines);
+        DebugLog.Write($"Gelernt: {candidates.Count} neue Wörterbuch-Einträge ({string.Join(", ", candidates.Select(c => $"{c.Before}={c.After} ({c.Count}x)"))})");
+        return candidates;
     }
 
     /// <summary>

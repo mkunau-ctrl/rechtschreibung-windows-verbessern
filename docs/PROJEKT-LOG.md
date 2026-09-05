@@ -1,5 +1,57 @@
 # Projekt-Log — Rechtschreib-Trainer (Windows)
 
+## 2026-09-05 – Phase 5: Automatisches Lernen aus dem eigenen Korrektur-Log
+
+**Was:** Der ursprüngliche Wunsch des Nutzers, jetzt gebaut. Beim
+Programmstart liest `DictionaryLoader` `korrekturen.jsonl` und zählt
+(vorher,nachher)-Paare (`DictionaryDistiller`, neue Klasse). Ab **3 gleichen
+Treffern** wandert das Paar automatisch in `woerterbuch.txt`, mit
+Kommentarzeile und Datum. Eine Tray-Benachrichtigung zeigt beim Start an,
+welche Wörter gelernt wurden ("3 neue Wörter gelernt: …").
+
+**Wichtiger Fund beim Gegenprüfen gegen das echte Log** (vor jedem
+Produktiveinsatz manuell geprüft, siehe Vorgehen unten): `ich=Ich` wäre mit
+gelernt worden. Das ist aber eine reine **Satzanfang**-Positionsregel
+(`CorrectionSource.Capitalization`), keine Rechtschreibkorrektur — als
+fester Wörterbuch-Eintrag hätte „ich" ab dann **überall im Satz**
+großgeschrieben werden können, nicht nur am Anfang. `DictionaryDistiller`
+schließt Capitalization-Quellen deshalb grundsätzlich aus, mit eigenem
+Regressionstest. Ebenso ausgeschlossen: Wörter aus
+`mehrdeutige-substantive.txt` (brauchen weiterhin Satzkontext, siehe letzter
+Log-Eintrag) und Wörter, die schon im Wörterbuch oder auf der Nie-Liste
+stehen.
+
+**Vorgehen beim Prüfen:** Vor der Verdrahtung ins laufende Programm eine
+temporäre Testdatei geschrieben, die `DictionaryDistiller` gegen das echte
+`korrekturen.jsonl` des Nutzers laufen ließ (91 Einträge) — Ergebnis vor der
+Capitalization-Absicherung: 8 Kandidaten, darunter das fehlerhafte
+`ich=Ich`. Nach der Absicherung entfernt sich dieser eine Fall, die
+restlichen sieben (`nocg=noch`, `ordner=Ordner`, `cih=ich`, `seperat=separat`,
+`computer=Computer`, `montag=Montag`, `datei=Datei`) sind allesamt
+unproblematisch (eindeutige Substantive oder feste Vertipper, nicht
+positionsabhängig). Testdatei danach wieder gelöscht — sie war nur zur
+Verifikation, kein Teil der Suite.
+
+**Entscheidung:** Verdichtung als eigene, pure Core-Klasse
+(`DictionaryDistiller`) statt direkt in `DictionaryLoader` — testbar ohne
+echte Dateisystem-Pfade. Schwellwert 3 als Konstante in `DictionaryLoader`
+(nicht konfigurierbar über eine Datei — bei Bedarf später nachrüstbar).
+
+**Stand danach:** 188 Tests grün (vorher 182). Programm neu gebaut,
+`scripts/install.ps1` erneut ausgeführt.
+
+**Offene Punkte / Nächste Schritte:**
+- Beobachten, was beim nächsten echten Programmstart tatsächlich gelernt
+  wird (die Tray-Benachrichtigung zeigt es an).
+- Alltagstest der Phase-1-Ersetzung durch den Nutzer steht weiterhin aus.
+- Artikel+Adjektiv+Substantiv-Ketten (`den großen Fluss`) — bräuchte echte
+  Wortarten-Erkennung, siehe letzter Log-Eintrag.
+- 11 hartnäckige Mehrfach-Vertipper — bräuchten Distanz-2 + Komposita-Schutz.
+- Damit sind alle sechs Phasen des Qualitätsplans mindestens einmal
+  angefasst (0–3 vollständig, 4 gezielt, 5 gebaut). Phase 6 (dauerhaft
+  optimiert halten) läuft bereits mit: die drei Ratschen-Tests fangen jeden
+  Rückschritt automatisch ab.
+
 ## 2026-09-05 – Phase 4 (Teil): gezielte Großschreibung mit einem Wort Kontext
 
 **Was:** Statt des vollen Bigramm-Systems aus dem ursprünglichen Plan eine

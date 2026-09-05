@@ -48,7 +48,7 @@ internal sealed class TrayApp : ApplicationContext
 
         AppPaths.EnsureDataDir();
         _keys = HotkeySettings.Load();
-        var dictionary = DictionaryLoader.Load();
+        var dictionary = DictionaryLoader.Load(out var learned);
         var spelling = DictionaryLoader.LoadSpelling();
         _neverCorrect = new NeverCorrectStore(AppPaths.NeverCorrectList);
 
@@ -112,10 +112,19 @@ internal sealed class TrayApp : ApplicationContext
         StartLiveCorrection();
         DebugLog.Write($"TrayApp bereit. Wörterbuch geladen. keyboardHook={_keyboard.IsInstalled} mouseHook={_mouse.IsInstalled}");
 
-        _trayIcon.BalloonTipTitle = "Live-Korrektur läuft";
-        _trayIcon.BalloonTipText =
-            $"Vertipper werden beim Tippen korrigiert. {_keys.ToggleCorrection} pausiert " +
-            $"(z. B. vor Passwörtern), {_keys.Undo} macht rückgängig.";
+        if (learned.Count > 0)
+        {
+            var words = string.Join(", ", learned.Select(c => c.Before));
+            _trayIcon.BalloonTipTitle = $"{learned.Count} neue Wörter gelernt";
+            _trayIcon.BalloonTipText = $"Aus wiederholten Korrekturen: {words}. Steht jetzt in woerterbuch.txt.";
+        }
+        else
+        {
+            _trayIcon.BalloonTipTitle = "Live-Korrektur läuft";
+            _trayIcon.BalloonTipText =
+                $"Vertipper werden beim Tippen korrigiert. {_keys.ToggleCorrection} pausiert " +
+                $"(z. B. vor Passwörtern), {_keys.Undo} macht rückgängig.";
+        }
         _trayIcon.ShowBalloonTip(4000);
     }
 

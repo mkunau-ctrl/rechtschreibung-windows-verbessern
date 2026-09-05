@@ -108,6 +108,19 @@ Der ganze Ablauf in einem Durchgang:
    trägt das Wort in `nie-korrigieren.txt` ein — derselbe Fehlgriff kommt
    damit nie wieder.
 
+10. **Lernen beim nächsten Programmstart.** `DictionaryLoader` liest beim
+    Start `korrekturen.jsonl` und zählt, wie oft welches Wort gleich
+    korrigiert wurde (`DictionaryDistiller`). Ab **3 gleichen Treffern**
+    wandert das Paar automatisch in `woerterbuch.txt` — mit Kommentarzeile
+    und Datum, damit sichtbar bleibt, was automatisch dazukam. Eine
+    Tray-Benachrichtigung zeigt an, welche Wörter gelernt wurden.
+    **Ausgeschlossen sind absichtlich:** Wörter, die schon im Wörterbuch oder
+    auf der Nie-Liste stehen; Satzanfang-Großschreibungen (`ich→Ich` ist eine
+    reine Positionsregel, kein feststehender Rechtschreibfehler — als fester
+    Eintrag würde „ich" plötzlich überall im Satz großgeschrieben); und die
+    mehrdeutigen Substantive aus `mehrdeutige-substantive.txt` (brauchen
+    weiterhin Satzkontext, dürfen nicht zur festen Regel werden).
+
 ---
 
 ## Teil 2: Die Projektstruktur
@@ -141,7 +154,8 @@ Kein Windows, keine Dateizugriffe im Kern, alles unit-testbar.
 | `SpellCorrector.cs` | Das Raten gegen die große Wortliste (Damerau-Abstand 1, Gewichte, Dominanz-Schwelle). `SpellSettings` hält die Stellschrauben. |
 | `WordList.cs` | Die geladenen Wortlisten im Speicher: kennt Wörter, Häufigkeiten, Substantive, Eigennamen und die „bleibt klein"-Ausnahmen. |
 | `LiveCorrectionController.cs` | Bindeglied: nimmt fertige Wörter, holt die Korrektur, stößt Ersetzung + Protokoll an, verwaltet Rückgängig. Kennt kein Windows — Ersetzen und Loggen sind Rückrufe. |
-| `LearnStore.cs` | Hängt eine Korrektur als JSON-Zeile an `korrekturen.jsonl` an. |
+| `LearnStore.cs` | Hängt eine Korrektur als JSON-Zeile an `korrekturen.jsonl` an; liest sie beim Start auch wieder ein (`ReadAll`). |
+| `DictionaryDistiller.cs` | Zählt (vorher,nachher)-Paare aus dem Korrektur-Log; ab einem Schwellwert ein Vorschlag fürs Wörterbuch. Schließt Satzanfang-Großschreibung grundsätzlich aus (siehe Ablauf, Schritt 10). |
 | `HotkeySpec.cs` | Wandelt Text wie `Strg+Alt+R` in Windows-Tastencodes. |
 
 ### `src/RechtschreibTrainer/` — das Windows-Programm

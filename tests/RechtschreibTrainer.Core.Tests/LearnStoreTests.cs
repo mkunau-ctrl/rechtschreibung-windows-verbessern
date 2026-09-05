@@ -43,4 +43,44 @@ public class LearnStoreTests : IDisposable
             Directory.Delete(dir, recursive: true);
         }
     }
+
+    // ---- ReadAll ----
+
+    [Fact]
+    public void ReadAllReturnsEveryAppendedRecord()
+    {
+        LearnStore.Append(_file, new CorrectionRecord(new DateTime(2026, 1, 1), "cih", "ich", CorrectionSource.Dictionary));
+        LearnStore.Append(_file, new CorrectionRecord(new DateTime(2026, 1, 2), "nocg", "noch", CorrectionSource.Rule));
+
+        var records = LearnStore.ReadAll(_file).ToList();
+
+        Assert.Equal(2, records.Count);
+        Assert.Equal("cih", records[0].Before);
+        Assert.Equal("ich", records[0].After);
+        Assert.Equal(CorrectionSource.Dictionary, records[0].Source);
+        Assert.Equal("noch", records[1].After);
+    }
+
+    [Fact]
+    public void ReadAllReturnsEmptyWhenFileIsMissing()
+    {
+        Assert.Empty(LearnStore.ReadAll(_file));
+    }
+
+    [Fact]
+    public void ReadAllSkipsBrokenLinesInsteadOfThrowing()
+    {
+        File.WriteAllLines(_file,
+        [
+            """{"at":"2026-01-01T00:00:00","before":"cih","after":"ich","source":"Dictionary"}""",
+            "kaputte zeile, kein json",
+            """{"at":"2026-01-02T00:00:00","before":"nocg","after":"noch","source":"Rule"}""",
+        ]);
+
+        var records = LearnStore.ReadAll(_file).ToList();
+
+        Assert.Equal(2, records.Count);
+        Assert.Equal("ich", records[0].After);
+        Assert.Equal("noch", records[1].After);
+    }
 }

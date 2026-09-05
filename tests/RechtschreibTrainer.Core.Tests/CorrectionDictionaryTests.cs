@@ -54,4 +54,13 @@ public class CorrectionDictionaryTests
         Assert.True(dict.TryCorrect("Cih", out var corrected));
         Assert.Equal("Ich", corrected);
     }
+
+    [Fact]
+    public void HasEntryReportsWhetherAWordIsAlreadyListed()
+    {
+        var dict = CorrectionDictionary.FromLines(new[] { "cih=ich" });
+
+        Assert.True(dict.HasEntry("cih"));
+        Assert.False(dict.HasEntry("ich"));
+    }
 }
