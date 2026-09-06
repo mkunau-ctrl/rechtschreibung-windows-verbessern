@@ -1,5 +1,76 @@
 # Projekt-Log — Rechtschreib-Trainer (Windows)
 
+## 2026-09-06 – 10.000-Wörter-Test: echter WordWatcher-Bug + Ausmaß des Großschreibungs-Problems
+
+**Was:** Auf Wunsch des Nutzers ein großangelegter Test gebaut: eine
+zusammenhängende, erfundene Geschichte mit ca. 9.940 Wörtern und ~3.100
+verschiedenen Wortformen (`tests/RechtschreibTrainer.Core.Tests/grosser-testtext.txt`,
+Alltag/Reise/Beruf/Natur/Wissenschaft/Feste für möglichst breiten Wortschatz),
+mit drei Schwierigkeitsgraden für Vertipper (leicht/mittel/schwer) statt nur
+einer Sorte, und einer Auswertung nach häufigster Fehlerart
+(`GrosserTextBenchmarkTests.cs`). Wichtig: Der getippte Text läuft **zeichenweise
+durch die echte `WordWatcher`-Klasse** (wie die Live-App), statt Satzanfang/
+Artikel-Kontext im Test selbst nachzubauen — eine eigene Nachbildung hätte
+den unten beschriebenen Bug verdeckt.
+
+**Fund 1 — echter Bug in `WordWatcher.cs`:** Nach wörtlicher Rede mit
+Redebegleitsatz (`„Wie war dein Tag?“, fragte er.`) hielt das Programm das
+`?`/`!` in der Rede für ein Satzende und schrieb das nächste Wort (den
+Redebegleit-Verb wie "fragte"/"rief") fälschlich groß — unabhängig von der
+Wortart, weil die Satzanfang-Regel in `OfflineCorrector.Correct` unbedingt
+gilt. Behoben: Ein Komma direkt nach einem noch offenen Satzanfang-Zustand
+(kein Wort dazwischen getippt) hebt den Satzanfang wieder auf. Ein echter
+neuer Satz nach einem Zitat (`„Ja.“ Dann ging sie.`, kein Komma danach)
+bleibt davon unberührt. Mit drei neuen Tests in `WordWatcherTests.cs`
+belegt.
+
+**Fund 2 — das Großschreibungs-Problem ist viel größer als gedacht:** Die
+Fehlalarmrate im großen Text lag zunächst bei 2,23 % (131 von 5.880
+Kontrollwörtern) — u.a. ganz gewöhnliche Wörter wie "sechs", "acht", "paar",
+"stolz", "stand", "trug", "treffen", "stellen": Sie sind zufällig *auch*
+in der 258k-Substantivliste (aus echten Wiktionary-Deklinationen, siehe
+`data/HERKUNFT.md`) als seltene Substantivform bekannt. Geprüft und
+verworfen: automatische Erkennung über Groß-/Kleinschreibung im
+Rohkorpus (scheitert, weil die Scrabble-Quelle von `woerter.txt`
+grundsätzlich alles klein listet — "montag" steht dadurch genauso im
+Korpus wie "trug", obwohl nur "trug" wirklich mehrdeutig ist) und über
+Häufigkeit (verworfen: "trug" 4335 vs. "montag" 4364 in `haeufigkeit.txt` —
+fast identisch, brauchen aber entgegengesetzte Behandlung, deckt sich mit
+dem bereits in Phase 4 dokumentierten Befund). Es gibt keinen billigen
+Trick — nur Kuratieren wirkt. `mehrdeutige-substantive.txt` um ~60 neu
+belegte Wörter erweitert (jedes gegen `data/substantive.txt` geprüft).
+Fehlalarmrate dadurch auf 1,20 % (71/5.917) gesenkt — bessert, konvergiert
+aber nicht: praktisch jeder größere Testlauf findet neue Fälle
+(Verb-Präteritumformen wie "bestand"/"gewann"/"baute"/"schaute"/"anbot",
+Adjektive wie "heißen"/"nasse"/"freie"/"dreißig" treffen ebenfalls auf
+seltene Substantivformen). Das bestätigt: Deutsche Nominalisierung ist zu
+produktiv, um mit einer endlichen, kuratierten Liste vollständig
+abgedeckt zu werden.
+
+**Offene Grundsatzfrage (siehe nächstes Gespräch mit dem Nutzer):** Die
+aktuelle Regel ("großschreiben, sobald die Großform irgendein bekanntes
+Substantiv ist, außer auf der kuratierten Ausnahmeliste") skaliert nicht.
+Eine Umkehr der Grundannahme (großschreiben nur noch mit Artikel-Beleg,
+außer auf einer kuratierten Liste unbedenklicher Wörter wie Wochentage)
+wäre robuster, senkt aber die Trefferquote bei echten, unbelegten
+Substantiv-Vertippern — eine Präzision-vs-Trefferquote-Abwägung, die der
+Nutzer treffen sollte, keine rein technische Entscheidung.
+
+**Weitere Randfunde:** Ein echter Komposita-Fall (`Transportwege` ->
+fälschlich `Transportweg`, bekannte, akzeptierte Grenze) und die
+"SchwerDoppelt"-Kategorie (zwei künstlich erzeugte Fehler gleichzeitig)
+liegt nur bei ~2 % Trefferquote — das ist aber eine sehr aggressive,
+teils kaum noch lesbare Verstümmelung (zwei Fehlerfunktionen
+hintereinander auf kurzen Wörtern), kein realistisches Abbild "zweier
+Tippfehler" im Sinne des früher schon geprüften und verworfenen
+Distanz-2-Ansatzes.
+
+**Stand danach:** 191 Tests grün (kleine Benchmarks unverändert:
+Präzision 100 %, Trefferquote 90,4 %, Fließtext 96,6 %). Der neue
+10.000-Wörter-Test ist bewusst **keine Ratsche** (keine feste Zielzahl),
+sondern ein Analyse-Werkzeug — er bleibt Teil der Suite, damit künftige
+größere Textmengen jederzeit neu ausgewertet werden können.
+
 ## 2026-09-06 – Nutzer-Feedback: i/e-Verwechslung und Mehrfachfehler
 
 **Was:** Nutzer meldete konkreten Ärger: "i und e vertauscht" wird oft nicht

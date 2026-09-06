@@ -54,6 +54,44 @@ public class WordWatcherTests
     }
 
     [Fact]
+    public void WortNachFrageZeichenInWoertlicherRedeIstKeinSatzanfang()
+    {
+        // "Wie war dein Tag?", fragte er - das Fragezeichen steckt in der
+        // woertlichen Rede, der Satz geht mit dem Redebegleitsatz weiter.
+        // Ohne den Fix wuerde "fragte" faelschlich grossgeschrieben.
+        var (w, seen) = Build();
+
+        Type(w, "„Wie war dein Tag?“, fragte er. ");
+
+        var fragte = seen.Single(s => s.Word == "fragte");
+        Assert.False(fragte.Context.IsSentenceStart);
+    }
+
+    [Fact]
+    public void WortNachAusrufezeichenInWoertlicherRedeIstKeinSatzanfang()
+    {
+        var (w, seen) = Build();
+
+        Type(w, "„Halt!“, rief sie. ");
+
+        var rief = seen.Single(s => s.Word == "rief");
+        Assert.False(rief.Context.IsSentenceStart);
+    }
+
+    [Fact]
+    public void EchterSatzanfangNachSchliessendemAnfuehrungszeichenBleibtErhalten()
+    {
+        // "Ja." Dann ging sie. - kein Komma nach dem Zitat, also ein echter
+        // neuer Satz. Muss weiterhin grossgeschrieben werden.
+        var (w, seen) = Build();
+
+        Type(w, "„Ja.“ dann ging sie. ");
+
+        var dann = seen.Single(s => s.Word == "dann");
+        Assert.True(dann.Context.IsSentenceStart);
+    }
+
+    [Fact]
     public void BackspaceShortensTheCurrentWord()
     {
         var (w, seen) = Build();

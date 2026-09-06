@@ -291,6 +291,26 @@ irgendwas debuggst.**
    `data/woerter.txt` in den übergeordneten Ordnern. Fehlen die Dateien,
    scheitert dieser Test — nicht der Code ist kaputt, die Daten fehlen.
 
+8. **Die Großschreibungs-Ausnahmeliste konvergiert nicht.** Jeder größere,
+   vielfältigere Text (siehe `GrosserTextBenchmarkTests.cs`, 2026-09-06)
+   findet neue Wörter, deren Großform zufällig in der 258k-Substantivliste
+   steht, obwohl klein gemeint (Zahlwörter, Adjektive, Verb-Präteritumformen:
+   "acht", "stolz", "trug", "bestand", …). Weder Groß-/Kleinschreibung im
+   Rohkorpus noch Häufigkeit trennen zuverlässig ("trug" und "montag" haben
+   fast identische Häufigkeit, brauchen aber entgegengesetzte Behandlung) —
+   nur einzelnes Kuratieren in `mehrdeutige-substantive.txt` wirkt, aber nie
+   vollständig. Grundsätzliche Abwägung (Artikel-Beleg standardmäßig für
+   *alle* Substantive verlangen, statt nur für die Ausnahmeliste) ist eine
+   offene, dem Nutzer vorzulegende Entscheidung, siehe `docs/PROJEKT-LOG.md`.
+
+9. **Satzanfang-Erkennung kennt keine wörtliche Rede.** `WordWatcher` hielt
+   bis zum 2026-09-06 jedes `.`/`!`/`?` für ein Satzende — auch mitten im
+   Satz nach einer zitierten Frage (`„Wie war dein Tag?“, fragte er`).
+   Behoben über eine Komma-Ausnahme (siehe Code-Kommentar in
+   `WordWatcher.cs`), aber die Erkennung bleibt ein einfacher
+   Zeichen-Check, kein echtes Satzverständnis — weitere Sonderfälle
+   (Doppelpunkt vor Zitat, verschachtelte Anführungszeichen) sind denkbar.
+
 ---
 
 ## Weiterlesen

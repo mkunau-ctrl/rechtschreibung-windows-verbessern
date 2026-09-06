@@ -30,3 +30,66 @@ brauche
 aktiv
 drei
 dies
+
+# Aus dem 10.000-Woerter-Fliesstext-Test vom 2026-09-06 (docs/PROJEKT-LOG.md):
+# ganz gewoehnliche Zahlwoerter, Adjektive und Verb-Praeteritumformen, die
+# zufaellig auch als (oft seltene) Substantivform in data/substantive.txt
+# stehen - jedes einzeln gegen die Datei verifiziert. Bestaetigt: Haeufigkeit
+# allein kann nicht unterscheiden (z.B. "trug" 4335 vs. "montag" 4364 in
+# haeufigkeit.txt - fast identisch, brauchen aber entgegengesetzte Behandlung).
+sechs
+acht
+neun
+zehn
+zwei
+paar
+stolz
+grau
+tief
+selbst
+roch
+groß
+stand
+trug
+rief
+gefallen
+sang
+warf
+pfiff
+pfiffen
+lokalen
+lokale
+strich
+versicherte
+dauern
+treffen
+gerade
+stellen
+wachse
+schrieb
+beschrieb
+roten
+kurzen
+zweiten
+planen
+kamen
+lagen
+namens
+kleinem
+näher
+wandern
+suchen
+dunkel
+rufe
+bekannte
+versuche
+positiv
+kommenden
+leer
+fort
+enge
+fest
+dunkle
+erwachsenen
+würden
+festen

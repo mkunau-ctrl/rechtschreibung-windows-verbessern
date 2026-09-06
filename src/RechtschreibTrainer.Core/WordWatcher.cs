@@ -47,6 +47,13 @@ public sealed class WordWatcher
             _sentenceStart = true;
         else if (emitted)
             _sentenceStart = false;
+        else if (c == ',' && _sentenceStart)
+            // Satzzeichen, dann (evtl. über ein schließendes Anführungszeichen
+            // hinweg) ein Komma, ohne dass dazwischen ein Wort getippt wurde:
+            // wörtliche Rede mit Redebegleitsatz ("Wie war dein Tag?", fragte
+            // er) - kein neuer Satz. Ohne diese Ausnahme würde "fragte"
+            // fälschlich großgeschrieben.
+            _sentenceStart = false;
         // reines Leerzeichen ohne Wort: Satzanfang-Zustand unverändert lassen
     }
 
