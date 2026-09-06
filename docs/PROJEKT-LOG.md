@@ -1,5 +1,74 @@
 # Projekt-Log — Rechtschreib-Trainer (Windows)
 
+## 2026-09-06 – Nutzer-Feedback: i/e-Verwechslung und Mehrfachfehler
+
+**Was:** Nutzer meldete konkreten Ärger: "i und e vertauscht" wird oft nicht
+erkannt, und Wörter mit mehreren gleichzeitigen Rechtschreibfehlern werden
+gar nicht korrigiert. Systematisch mit echten Daten nachvollzogen
+(`superpowers:systematic-debugging`), zwei Ursachen gefunden und einen dritten
+Ansatz geprüft und wieder verworfen.
+
+**Ursache 1 (behoben):** Bei genau 5 Zeichen war jedes Ersetzen eines
+Buchstabens komplett abgeschaltet (Schutz gegen "skill"→"kill"/"still"-artige
+Fehlkorrekturen bei kurzen Wörtern) — das blockierte auch die alltäglichsten
+i/e-Vertipper in sehr häufigen 5-Buchstaben-Wörtern wie "nicht", "sind",
+"kommt". **Ursache 2 (behoben):** Die Kandidaten-Bewertung nahm ausschließlich
+die höchste Gewichtsklasse und verwarf den Rest komplett — dadurch gewann
+z.B. bei "kerche" der Tastatur-Nachbar-Kandidat "Lerche" (0,9, k/l benachbart)
+automatisch gegen den eigentlich gemeinten "Kirche" (0,45, e/i nicht
+benachbart), obwohl "Kirche" in den Häufigkeitsdaten 96× häufiger ist als
+"Lerche" — die Häufigkeit bekam nie die Chance zu entscheiden, weil "Kirche"
+schon vorher aussortiert war.
+
+**Entscheidung:** Neue Klasse `LetterConfusions.cs` — ein kleines, belegtes
+Verwechslungspaar (i/e, phonetisch ähnlich, nicht tastatur-benachbart), das
+genauso hoch gewichtet wird wie ein Tastatur-Nachbar (`WeightConfusable`).
+Dadurch landen "Kirche" und "Lerche" in derselben Gewichtsklasse, und die
+Häufigkeit entscheidet wie überall sonst auch. Gilt bewusst auch bei 5
+Zeichen (im Unterschied zum generischen Ersetzen), weil es nur dieses eine
+begründete Paar ist, keine Tür für beliebige Verwechslungen.
+
+**Mehrfachfehler-Versuch (implementiert, gemessen, verworfen):** 7 von 11
+übersehenen Fällen im Benchmark waren Wörter mit zwei gleichzeitigen Fehlern
+("korriegert" statt "korrigiert" u.ä.). Testweise eine zweite Fehler-Ebene
+eingebaut (Verkettung zweier Ersetzungen als Rückfallebene, wenn ein
+einzelner Fehler nichts findet). Zwei Probleme aufgetaucht:
+1. **Performance:** Das volle Alphabet zweimal verkettet dauerte bei einem
+   17-Zeichen-Wort ca. 0,5 Sekunden — und zwar auf demselben UI-Thread, der
+   auch den Tastatur-Hook bedient (`TrayApp._debounce.Tick`). Das hätte beim
+   Tippen zu spürbaren Rucklern führen können, im schlimmsten Fall sogar
+   system­weit (Windows kann einen zu langsamen `WH_KEYBOARD_LL`-Hook
+   überspringen). Eingeschränkt auf plausible Buchstaben (Tastatur-Nachbarn,
+   Verwechslungspaare, Vokale) statt des ganzen Alphabets — brachte die
+   Worst-Case-Zeit auf ca. 160 ms, war aber immer noch spürbar.
+2. **Präzision (der eigentliche Showstopper):** Im Fließtext-Benchmark sank
+   die Präzision dadurch von 100 % auf 97,2 % (unter das 98 %-Ziel) — 3 neue
+   Fehlkorrekturen, z.B. "zustaedig" → "zusteig" statt "zuständig" (weil
+   "ae"→"ä" eigentlich eine Ersetzungstabellen-Aufgabe ist, keine einfache
+   Buchstaben-Verkettung, aber die Suche zufällig ein anderes echtes Wort
+   traf). Ohne Sprachkontext (Bigramme, Grammatik) lässt sich ein zufällig
+   getroffenes echtes Wort nicht von einem tatsächlich gemeinten
+   unterscheiden — mehrere Gewichts-/Häufigkeits-Variationen durchprobiert,
+   keine trennte die guten von den schlechten Fällen zuverlässig.
+
+**Entscheidung:** Verworfen und vollständig zurückgerollt. Das bestätigt mit
+echten Zahlen, was der Qualitätsplan schon im September vermutet hatte:
+Distanz-2-Suche kostet mehr Präzision, als sie an Trefferquote bringt, ohne
+echten Sprachkontext (siehe `docs/RECHERCHE-KORREKTURSYSTEME.md`). Bleibt
+eine bewusst offene Grenze.
+
+**Stand danach:** Präzision weiterhin 100 %, Trefferquote weiterhin 90,4 %
+(unverändert, weil der isolierte Benchmark zufällig keinen i/e-Fall enthält
+— der Fix wirkt aber nachweislich, siehe neue Unit-Tests
+`ErkenntEinVertauschtesEStattIAuchBeiFuenfBuchstaben` und
+`BevorzugtDasHaeufigereWortTrotzTastaturNachbarschaftDesAnderenKandidaten`
+in `SpellCorrectorTests.cs`). 187 Tests grün.
+
+**Offene Punkte:** Mehrfachfehler bleiben ein bekannter, jetzt mit Beweis
+untermauerter blinder Fleck. Ein echter Fix bräuchte Sprachkontext
+(Bigramme/Grammatik) oder eine sehr viel größere, validierte Korpus-Basis —
+beides deutlich über den Rahmen eines schlanken Offline-Tools hinaus.
+
 ## 2026-09-05 – Deployment-Bug gefunden: `install.ps1` baute vor dem Stoppen
 
 **Was:** Beim Verifizieren von Phase 5 (siehe nächster Log-Eintrag) fiel auf,

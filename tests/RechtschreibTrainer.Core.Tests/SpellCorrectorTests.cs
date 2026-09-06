@@ -157,6 +157,50 @@ public class SpellCorrectorTests
     // durch PicksTheMoreCommonWordWhenTheEditIsTheSameKind abgedeckt
     // (u->a und u->o sind auf der QWERTZ-Tastatur beides keine Nachbarn).
 
+    // ---- Verwechselbare Buchstaben i/e (Bugfix nach Nutzer-Feedback) ----
+
+    [Fact]
+    public void ErkenntEinVertauschtesEStattIAuchBeiFuenfBuchstaben()
+    {
+        // "necht" (5 Zeichen) ist bisher NIE korrigiert worden, weil bei
+        // genau 5 Zeichen jedes Ersetzen abgeschaltet war - i/e-Vertipper
+        // sind aber gerade bei kurzen, sehr häufigen Wörtern das Alltägliche.
+        var c = Build(["nicht"]);
+
+        Assert.Equal("nicht", c.Suggest("necht"));
+    }
+
+    [Fact]
+    public void BevorzugtDasHaeufigereWortTrotzTastaturNachbarschaftDesAnderenKandidaten()
+    {
+        // "kerche": "Kirche" (e->i, kein Tastaturnachbar, aber verwechselbar)
+        // gegen "Lerche" (k->l, Tastaturnachbar). Ohne den Fix gewinnt allein
+        // wegen der Tastaturnähe "Lerche" - obwohl "Kirche" ungleich häufiger
+        // ist. Beide müssen in derselben Gewichtsklasse landen, dann
+        // entscheidet die Häufigkeit wie überall sonst auch.
+        var c = Build(["Kirche", "Lerche"], "Kirche 10507", "Lerche 109");
+
+        Assert.Equal("Kirche", c.Suggest("kerche"));
+    }
+
+    [Fact]
+    public void ErsetztBeiFuenfBuchstabenWeiterhinNichtBeliebigeBuchstaben()
+    {
+        // Der gezielte i/e-Fix darf die bestehende Schutzschranke für
+        // generisches Ersetzen bei kurzen Wörtern nicht aufweichen.
+        var c = Build(["kill", "still"]);
+
+        Assert.Null(c.Suggest("skill"));
+    }
+
+    // Zwei gleichzeitige Fehler (z.B. "korriegert" statt "korrigiert") wurden
+    // versuchsweise über eine Verkettung zweier Ersetzungen umgesetzt und
+    // gegen den Fließtext-Benchmark gemessen: 7 zusätzliche Treffer, aber 3
+    // neue Fehlkorrekturen (Präzision 100% -> 97,2%, unter dem 98%-Ziel) -
+    // z.B. "zustaedig" -> "zusteig" statt "zuständig". Ohne Sprachkontext
+    // lässt sich ein zufällig getroffenes echtes Wort nicht von einem
+    // gemeinten unterscheiden. Bewusst verworfen, siehe PROJEKT-LOG.
+
     // ---- Mehrdeutige Substantive (Phase 4) ----
 
     private static SpellCorrector BuildAmbiguous(string[] words, string[] nouns, params string[] ambiguousNouns)

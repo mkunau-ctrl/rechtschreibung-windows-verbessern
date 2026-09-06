@@ -39,6 +39,16 @@ public sealed class SpellCorrector
     /// </summary>
     private const double WeightAdjacentSubstitution = WeightInsertion;
 
+    /// <summary>
+    /// Falscher Buchstabe, aber ein bekanntes Verwechslungspaar (siehe
+    /// <see cref="LetterConfusions"/>), z.B. i/e — genauso plausibel wie ein
+    /// Danebengriff auf die Nachbartaste, auch wenn die Tasten selbst weit
+    /// auseinander liegen. Gilt bewusst auch bei genau 5 Zeichen (im
+    /// Unterschied zum generischen Ersetzen), weil es nur ein einziges,
+    /// belegtes Paar ist und keine Tür für beliebige Verwechslungen öffnet.
+    /// </summary>
+    private const double WeightConfusable = WeightAdjacentSubstitution;
+
     private readonly WordList _words;
     private readonly SpellSettings _settings;
 
@@ -160,6 +170,15 @@ public sealed class SpellCorrector
 
             if (right.Length > 1)
                 Consider(left + right[1] + right[0] + right[2..], WeightTransposition);
+
+            // Verwechslungspaare (i/e) sind auch bei 5 Zeichen erlaubt - im
+            // Gegensatz zum generischen Ersetzen unten ist das nur ein
+            // einziges begründetes Paar, kein Buchstabe-gegen-jeden-Buchstaben.
+            if (right.Length > 0)
+            {
+                foreach (var confused in LetterConfusions.ConfusedWith(right[0]))
+                    Consider(left + confused + right[1..], WeightConfusable);
+            }
 
             foreach (var c in Alphabet)
             {

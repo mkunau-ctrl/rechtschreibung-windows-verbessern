@@ -150,6 +150,7 @@ Kein Windows, keine Dateizugriffe im Kern, alles unit-testbar.
 | `CorrectionRules.cs` | Drei fest verdrahtete Muster-Regeln: `scg→sch` überall, `cg→ch` am Wortende, `cih→ich` am Wortanfang. |
 | `ReplacementTable.cs` | Feste Ersatzschreibungen nach Hunspell-`REP`-Vorbild: `ue→ü`, `oe→ö`, `ae→ä`, `ss→ß`. Liefert Kandidaten; `OfflineCorrector` prüft, ob einer davon ein bekanntes Wort ergibt — oder speist ihn zusätzlich ins Raten ein, wenn noch ein zweiter Fehler dazukommt. |
 | `KeyboardLayout.cs` | QWERTZ-Tastatur-Nachbarschaft (nach Aspell-`.kbd`-Vorbild, nur Nachbarn in derselben Reihe). Sagt `SpellCorrector`, ob ein falscher Buchstabe ein plausibler Danebengriff war. |
+| `LetterConfusions.cs` | Buchstabenpaare, die trotz fehlender Tastatur-Nachbarschaft oft verwechselt werden (bisher nur i/e). Wird wie ein Tastatur-Nachbar gewichtet (`WeightConfusable`). |
 | `Determiners.cs` | Artikel/Possessiv-/Demonstrativpronomen (der/die/das/ein/mein/…). Signalisiert, dass das nächste Wort vermutlich ein Substantiv ist. |
 | `SpellCorrector.cs` | Das Raten gegen die große Wortliste (Damerau-Abstand 1, Gewichte, Dominanz-Schwelle). `SpellSettings` hält die Stellschrauben. |
 | `WordList.cs` | Die geladenen Wortlisten im Speicher: kennt Wörter, Häufigkeiten, Substantive, Eigennamen und die „bleibt klein"-Ausnahmen. |
