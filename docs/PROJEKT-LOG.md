@@ -1,5 +1,94 @@
 # Projekt-Log — Rechtschreib-Trainer (Windows)
 
+## 2026-09-07 – Häufige-Fehler-Liste aus der Wikipedia-Tippfehlerliste
+
+**Was:** Eine neue mitgelieferte Datei
+`src/RechtschreibTrainer/haeufige-fehler.txt` mit **836** streng gefilterten
+`falsch=richtig`-Paaren, automatisch erzeugt von
+`scripts/fetch-fehlerlisten.ps1` aus der Wikipedia-„Liste von Tippfehlern"
+(Unterseiten A–Z, 0-9, PQ, XYZ, Sonderzeichen; CC BY-SA 4.0). Verdrahtet in
+`AppPaths`, `RechtschreibTrainer.csproj`, `DictionaryLoader` (als Erstes
+geladen, damit die handgepflegten Listen bei einem Konflikt gewinnen) und
+`RepoFiles` (der Benchmark misst die Liste jetzt mit). Plan:
+`docs/superpowers/plans/2026-09-07-haeufige-fehler-liste-plan.md`.
+
+**Warum:** Wunsch des Nutzers — Trainingsdaten aus dem Internet sammeln,
+damit die Offline-Korrektur wiederkehrende deutsche Tippfehler besser fängt.
+Ausdrücklich mit **Präzision zuerst**: neue Daten nur, wenn die
+Benchmark-Präzision nicht sinkt.
+
+**Der Filter ist das eigentliche Werk.** Von ~2.550 Rohvorlagen bleiben 836
+übrig. Ein Paar kommt nur rein, wenn *alle* Punkte zutreffen:
+- `falsch` ist **kein** bekanntes Wort (nicht in `woerter.txt` /
+  `substantive.txt` / `namen.txt`) — sonst würde ein korrektes Wort
+  „verschlimmbessert". Der Test `KeinSchluesselIstInWahrheitEinKorrektesWort`
+  und ein `comm`-Abgleich bestätigen: **null** Kollisionen mit der 870k-Liste.
+- `richtig` ist belegt: jedes Token in den Wortlisten **und** das Hauptwort im
+  freien Frequenzkorpus `haeufigkeit.txt` (OpenSubtitles, MIT) oder als
+  Substantivform. Das ist die vom Nutzer freigegebene Korpus-Prüfung — sie
+  siebt seltene und englisch-kontaminierte Ziele aus (`right`, `ridge`).
+- kein reiner Groß-/Klein- oder `ss`/`ß`-Unterschied (Satzkontext / Schweiz),
+- nicht schon von `ReplacementTable` (`ue→ü` …) oder den Handlisten abgedeckt,
+- „X oder Y"-Anmerkungen und Wortform-Platzhalter (`*`, `+`) verworfen.
+
+**Entscheidungen:**
+- **Getrennte Datei**, nicht in `klassische-fehler.txt` hineingemischt — die
+  Herkunft (automatisch vs. handgeprüft) bleibt so sichtbar, und ein erneuter
+  Lauf überschreibt nur die Auto-Liste. Kopfzeile mit Quelle, Lizenz, Datum.
+- **Schlüssel klein normalisiert**, Wert in Original-Schreibung (Substantive
+  groß). Die Kleinschreib-Rückfallregel in `CorrectionDictionary` deckt damit
+  Satzanfang und mitten-im-Satz gleichzeitig ab.
+- **Frequenzkorpus nur als Filter**, kein Laufzeit-Feature. n-Gramme,
+  Confusion-Matrix und die Groß-/Kleinschreib-Regel bewusst nicht angefasst
+  (YAGNI / Präzisionsrisiko, siehe Plan).
+- **Kein Rohtext ins Repo** — nur die abgeleitete Liste, mit
+  CC-BY-SA-Vermerk in `data/HERKUNFT.md`.
+- **`data/HERKUNFT.md` jetzt in Git.** Fiel dabei auf: `.gitignore` schloss
+  `data/` komplett aus, damit war die Lizenz-/Herkunftsdoku für das
+  öffentliche Repo bisher gar nicht im Repo. `.gitignore` auf `data/*` +
+  `!data/HERKUNFT.md` geändert — die großen Wortlisten bleiben ignoriert.
+
+**Neue Tests (200 grün, vorher 191):**
+- `HaeufigeFehlerListeTests` (8 Prüfungen): kein Schlüssel ist ein echtes
+  Wort, jeder Zielwert ist belegt, keine Duplikate/Casing-only, keine
+  Überschneidung mit den Handlisten, **jeder Eintrag greift im Betrieb
+  wirklich so** (Round-Trip durch `RepoFiles.LoadCorrector`), Holdout-Fälle
+  sind nicht ausgeliefert.
+- `GaengigeTippfehlerBenchmarkTests`: misst an
+  `tests/.../gaengige-tippfehler-holdout.tsv` (76 bewusst *ausgesparte*
+  Tippfehler), wie viel die restliche Kette (Regeln, Ersatzschreibung, Raten)
+  von allein fängt. **Ergebnis bei Einführung: 60/76 korrekt gefixt (78,9 %),
+  9/76 unberührt, 7/76 falsch geändert (9,2 %).** Die 7 Fehlgriffe sind
+  Rate-Schritt-Fehler (`fröhnen→dröhnen` statt `frönen`,
+  `lybische→lyrische` statt `libysche`, `interseite→Hinterseite` statt
+  `Internetseite`) — genau die Fälle, die ein ausgeliefertes Paar *verhindern*
+  würde. Das ist der belegte Nutzen der Liste. **Keine Ratsche**, nur
+  Analyse + grober Einbruchschutz (Quote ≥ 55 %, Schaden ≤ 15 %).
+
+**Stand danach:** `BenchmarkTests` unverändert — Präzision 100 %,
+Trefferquote 90,4 %, Fehlalarme 0 %. Die neue Liste berührt keinen der 206
+Log-Fälle (die stammen aus dem echten Tippverhalten, nicht aus klassischen
+Wörterbuch-Tippfehlern), senkt also nichts. 200 Core-Tests grün.
+
+⚠️ **Noch nicht am laufenden Programm verifiziert.** Der WinExe-Build
+(`RechtschreibTrainer.csproj`) bricht aktuell wieder mit dem
+Defender-Fehlalarm auf `KeyboardHook.cs` ab (bekannt, siehe unten). Die
+Kernlogik ist über `RechtschreibTrainer.Core` + `RepoFiles` voll getestet,
+aber der Nutzer muss die Defender-Erkennung zulassen, neu bauen und
+`scripts/install.ps1` laufen lassen, damit die Liste tatsächlich live ist.
+
+**Offene Punkte / Nächste Schritte:**
+- Nach dem nächsten `install.ps1`: im Alltag prüfen, ob die neuen Paare
+  spürbar helfen und keine Fehlkorrektur auslösen.
+- `naheste → nahesteh`: der Rate-Schritt erzeugt hier ein **Nicht-Wort** —
+  eigener kleiner Bug in `SpellCorrector` (Kandidat wird nicht gegen die
+  Wortliste geprüft?), separat und niedrigpriorisiert.
+- Weitere freie Quellen (LibreOffice-Autokorrektur `acor_de-DE.dat`,
+  Leipzig-Bigramme) sind in `docs/RECHERCHE-KORREKTURSYSTEME.md` beschrieben,
+  aber bewusst zurückgestellt.
+- Die offene Grundsatzfrage zur Groß-/Kleinschreib-Regel (Umkehr auf
+  Artikel-Beleg) aus dem 2026-09-06-Eintrag ist weiter offen.
+
 ## 2026-09-06 – 10.000-Wörter-Test: echter WordWatcher-Bug + Ausmaß des Großschreibungs-Problems
 
 **Was:** Auf Wunsch des Nutzers ein großangelegter Test gebaut: eine

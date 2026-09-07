@@ -39,7 +39,11 @@ Der ganze Ablauf in einem Durchgang:
 5. **Korrektur bestimmen.** `OfflineCorrector` geht in dieser festen
    Reihenfolge vor und nimmt das erste Ergebnis:
    1. Steht das Wort in `nie-korrigieren.txt`? → **Finger weg**, Ende.
-   2. Steht es im **Wörterbuch** (`falsch=richtig`)? → das nehmen.
+   2. Steht es im **Wörterbuch** (`falsch=richtig`)? → das nehmen. Das
+      Wörterbuch ist die Summe aus `haeufige-fehler.txt` (automatisch aus der
+      Wikipedia-Tippfehlerliste erzeugt), `klassische-fehler.txt`,
+      `standard-vertipper.txt` und deiner persönlichen `woerterbuch.txt` —
+      in dieser Reihenfolge geladen, spätere gewinnen bei einem Konflikt.
    3. Greift eine **Regel** (`scg→sch`, Wortende `cg→ch`, Wortanfang
       `cih→ich`)? → das nehmen.
    4. Löst eine **Ersatzschreibung** (`ReplacementTable`: `ue→ü`, `oe→ö`,
@@ -132,7 +136,8 @@ rechtschreibung-windows-verbessern/
 ├── RechtschreibTrainer.sln    Visual-Studio-Projektmappe
 ├── data/                      große Wortlisten (NICHT in Git, s. u.)
 ├── docs/                      diese Dokumentation
-├── scripts/install.ps1        Installation + Autostart
+├── scripts/install.ps1              Installation + Autostart
+├── scripts/fetch-fehlerlisten.ps1   erzeugt haeufige-fehler.txt neu (Entwicklung)
 ├── src/RechtschreibTrainer.Core/    reine Logik, testbar
 ├── src/RechtschreibTrainer/         Windows-Programm (Tray, Hooks)
 └── tests/                     xUnit-Tests
@@ -168,7 +173,7 @@ Kein Windows, keine Dateizugriffe im Kern, alles unit-testbar.
 | `KeyboardHook.cs` | Systemweiter Tastatur-Hook. Meldet Zeichen, Rücktaste, Enter, Navigationstasten. Ignoriert eigene simulierte Eingaben per Marker. ⚠️ Wird von Windows Defender gern fälschlich als Virus gemeldet. |
 | `MouseHook.cs` | Meldet Mausklicks, damit der Wort-Kontext verworfen wird. |
 | `Replacer.cs` | Führt die Ersetzung per `SendInput` aus (Rücktasten + Unicode-Text). |
-| `DictionaryLoader.cs` | Lädt die Wörterbücher in der richtigen Reihenfolge und die große Wortliste. Fehlen die Datendateien, läuft das Programm ohne Rechtschreibprüfung weiter. |
+| `DictionaryLoader.cs` | Lädt die Wörterbücher in der Reihenfolge `haeufige-fehler.txt` → `klassische-fehler.txt` → `standard-vertipper.txt` → Benutzerdatei und die große Wortliste. Fehlen die Datendateien, läuft das Programm ohne Rechtschreibprüfung weiter. |
 | `HotkeySettings.cs` | Liest `tasten.txt`, legt sie beim ersten Start an. |
 | `NeverCorrectStore.cs` | Verwaltet `nie-korrigieren.txt`; neue Einträge wirken sofort. |
 | `AppPaths.cs` | **Alle Dateipfade an einem Ort.** Erste Anlaufstelle bei der Frage „wo liegt was?". |
@@ -177,7 +182,8 @@ Kein Windows, keine Dateizugriffe im Kern, alles unit-testbar.
 | `HotkeyForm.cs` | Unsichtbares Fenster; empfängt Hotkey-Nachrichten und dient als Ziel, um Hook-Ereignisse auf den UI-Thread zu holen. |
 | `Win32.cs` | Die Windows-Funktionsaufrufe (`RegisterHotKey`, `GetForegroundWindow` …). |
 | `standard-vertipper.txt` | Mitgelieferte Vertipper-Liste (deine ersten Mitschnitte + häufige deutsche Dreher). |
-| `klassische-fehler.txt` | Mitgelieferte Liste klassischer Rechtschreibfehler (`seperat=separat`, `Standart=Standard` …). Nur eindeutige Fälle, nichts Kontextabhängiges. |
+| `klassische-fehler.txt` | Mitgelieferte Liste klassischer Rechtschreibfehler (`seperat=separat`, `Standart=Standard` …). Nur eindeutige Fälle, nichts Kontextabhängiges. Von Hand gepflegt. |
+| `haeufige-fehler.txt` | **Automatisch erzeugt** von `scripts/fetch-fehlerlisten.ps1` aus der Wikipedia-„Liste von Tippfehlern" (CC BY-SA 4.0, siehe `data/HERKUNFT.md`). ~840 streng gefilterte `falsch=richtig`-Paare: `falsch` ist nachweislich kein echtes Wort, `richtig` ist belegt, keine reinen Groß-/Klein- oder ss/ß-Unterschiede. **Nicht von Hand pflegen** — beim nächsten Lauf überschrieben. |
 | `denglisch-verben.txt` | Eingedeutschte englische Tech-Verben (`coden`, `committen`, `pushen`, `mergen`, `deployen` …) als **bekannte Wörter** (keine Ersetzung) — verhindert, dass z. B. `codest` fälschlich zu `Codes` geraten wird. |
 | `mehrdeutige-substantive.txt` | Wörter, die oft etwas anderes sind (Verb/Adjektiv) und nur mit vorangehendem Artikel großgeschrieben werden (`fallen`, `dusche`, `gucken`, `aktiv`, `drei` …). |
 
@@ -185,7 +191,7 @@ Kein Windows, keine Dateizugriffe im Kern, alles unit-testbar.
 
 | Ordner | Inhalt |
 |---|---|
-| `RechtschreibTrainer.Core.Tests/` | Unit-Tests der reinen Logik plus zwei Qualitäts-Benchmarks gegen die **echten** Wortlisten: `BenchmarkTests.cs` (206 isolierte, aus den echten Logs beschriftete Einzelwörter — Präzision/Trefferquote/Fehlalarme) und `PassageBenchmarkTests.cs` (ein zusammenhängender 238-Wörter-Fließtext mit programmgesteuert erzeugten Vertippern — Gesamtquote im Lesefluss). Beide laufen als **Ratsche**: Konstanten im Testcode hochsetzen, wenn sich etwas verbessert; ein Rückschritt lässt die Suite sofort rot werden. |
+| `RechtschreibTrainer.Core.Tests/` | Unit-Tests der reinen Logik plus Qualitäts-Benchmarks gegen die **echten** Wortlisten: `BenchmarkTests.cs` (206 isolierte, aus den echten Logs beschriftete Einzelwörter — Präzision/Trefferquote/Fehlalarme) und `PassageBenchmarkTests.cs` (238-Wörter-Fließtext) laufen als **Ratsche**. Dazu zwei Prüfungen für die Auto-Fehlerliste: `HaeufigeFehlerListeTests.cs` (kein Schlüssel ist in Wahrheit ein echtes Wort, jeder Eintrag greift im Betrieb wie erwartet, keine Überschneidung mit den Handlisten) und `GaengigeTippfehlerBenchmarkTests.cs` (misst an `gaengige-tippfehler-holdout.tsv` — 76 bewusst *nicht* ausgelieferten Tippfehlern — wie viel die restliche Kette von allein fängt; **keine Ratsche**, nur Analyse + grober Einbruchschutz). |
 | `RechtschreibTrainer.Tests/` | 4 Tests der Windows-nahen Teile (Icon, Replacer-Struktur). |
 
 ---

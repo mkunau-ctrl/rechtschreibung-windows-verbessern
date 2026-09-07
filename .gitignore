@@ -3,5 +3,6 @@ obj/
 *.user
 *.suo
 .vs/
-data/
+data/*
+!data/HERKUNFT.md
 *.log

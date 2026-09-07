@@ -38,7 +38,11 @@ Bei Bedarf tiefer:
 - `tests/RechtschreibTrainer.Core.Tests/` — xUnit, reale Ein-/Ausgaben, keine Mocks.
 - `tests/RechtschreibTrainer.Tests/` — Tests für Windows-nahe Teile (Icon, Replacer).
 - `scripts/install.ps1` — Autostart-/Installationsskript.
-- Datendateien neben der .exe: `standard-vertipper.txt`, `klassische-fehler.txt`,
+- `scripts/fetch-fehlerlisten.ps1` — erzeugt `src/RechtschreibTrainer/haeufige-fehler.txt`
+  neu (streng gefilterte Wikipedia-Tippfehlerliste, ~840 Paare). Nur zur
+  Entwicklungszeit; das Programm geht nie ins Netz. Siehe `data/HERKUNFT.md`.
+- Datendateien neben der .exe: `haeufige-fehler.txt` (automatisch),
+  `standard-vertipper.txt`, `klassische-fehler.txt`,
   `data/woerter.txt`, `data/haeufigkeit.txt`, `data/substantive.txt`,
   `data/klein-schreiben.txt`, `data/namen.txt`.
 - Benutzerdaten liegen in `Dokumente\RechtschreibTrainer\` (Wörterbuch, Logs,
@@ -85,4 +89,8 @@ Doku auf Deutsch. Datenschutz beachten (siehe README-Abschnitt „Sicherheit").
   immer erst Status prüfen.
 - Aktueller Branch-Stand: `main` und `feat/live-korrektur-offline` sind
   identisch (gemerged, 2026-09-05). Für neue Features neuen Feature-Branch
-  von `main` abzweigen.
+  von `main` abzweigen. `haeufige-fehler.txt` läuft auf
+  `feat/haeufige-fehler-liste` (2026-09-07).
+- `haeufige-fehler.txt` **nicht von Hand pflegen** — wird von
+  `scripts/fetch-fehlerlisten.ps1` überschrieben. Eigene Einträge gehören in
+  `klassische-fehler.txt` (handgeprüft) oder die persönliche `woerterbuch.txt`.
