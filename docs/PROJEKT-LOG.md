@@ -70,16 +70,23 @@ Trefferquote 90,4 %, Fehlalarme 0 %. Die neue Liste berührt keinen der 206
 Log-Fälle (die stammen aus dem echten Tippverhalten, nicht aus klassischen
 Wörterbuch-Tippfehlern), senkt also nichts. 200 Core-Tests grün.
 
-⚠️ **Noch nicht am laufenden Programm verifiziert.** Der WinExe-Build
-(`RechtschreibTrainer.csproj`) bricht aktuell wieder mit dem
-Defender-Fehlalarm auf `KeyboardHook.cs` ab (bekannt, siehe unten). Die
-Kernlogik ist über `RechtschreibTrainer.Core` + `RepoFiles` voll getestet,
-aber der Nutzer muss die Defender-Erkennung zulassen, neu bauen und
-`scripts/install.ps1` laufen lassen, damit die Liste tatsächlich live ist.
+**Nachtrag 2026-09-08 – gemergt, gepusht, installiert.** Der Nutzer hat die
+Defender-Erkennung auf `KeyboardHook.cs` zugelassen; danach lief der volle
+`dotnet build RechtschreibTrainer.sln` sauber durch (0 Warnungen, **204
+Tests grün** — 200 Core + 4 Tray). `feat/haeufige-fehler-liste` per
+`git merge --no-ff` nach `main` (Merge-Commit `8b4e3a5`), gepusht, PR #1
+als *merged* geschlossen. `scripts/install.ps1` ausgeführt: neuer
+`dotnet publish` nach `%LOCALAPPDATA%\RechtschreibTrainer`, Prozess läuft
+(PID neu, Startzeit frisch). **Beobachtbar geprüft:** `haeufige-fehler.txt`
+liegt neben der `.exe` mit 836 Paaren und frischem Datei-Datum;
+`AppPaths.CommonMistakes` zeigt genau dorthin; der Ladepfad ist über
+`RepoFiles.LoadDictionary` (spiegelt `DictionaryLoader` 1:1) mit dem Test
+`JederEintragWirdImBetriebAuchWirklichSoKorrigiert` für alle 836 Einträge
+abgedeckt. Ein echter Live-Tipptest durch den Nutzer steht noch aus.
 
 **Offene Punkte / Nächste Schritte:**
-- Nach dem nächsten `install.ps1`: im Alltag prüfen, ob die neuen Paare
-  spürbar helfen und keine Fehlkorrektur auslösen.
+- Im Alltag prüfen, ob die neuen Paare spürbar helfen und keine
+  Fehlkorrektur auslösen.
 - `naheste → nahesteh`: der Rate-Schritt erzeugt hier ein **Nicht-Wort** —
   eigener kleiner Bug in `SpellCorrector` (Kandidat wird nicht gegen die
   Wortliste geprüft?), separat und niedrigpriorisiert.

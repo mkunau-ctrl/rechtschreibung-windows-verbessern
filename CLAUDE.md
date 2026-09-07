@@ -87,10 +87,9 @@ Doku auf Deutsch. Datenschutz beachten (siehe README-Abschnitt „Sicherheit").
 - Push auf GitHub lief bisher direkt durch (kein Auto-Classifier-Block wie
   bei anderen Projekten des Nutzers) — trotzdem vor destruktiven Git-Aktionen
   immer erst Status prüfen.
-- Aktueller Branch-Stand: `main` und `feat/live-korrektur-offline` sind
-  identisch (gemerged, 2026-09-05). Für neue Features neuen Feature-Branch
-  von `main` abzweigen. `haeufige-fehler.txt` läuft auf
-  `feat/haeufige-fehler-liste` (2026-09-07).
+- Aktueller Branch-Stand: `main` ist führend; `feat/haeufige-fehler-liste`
+  (Merge-Commit `8b4e3a5`, 2026-09-08) und `feat/live-korrektur-offline` sind
+  hineingemergt. Für neue Features neuen Feature-Branch von `main` abzweigen.
 - `haeufige-fehler.txt` **nicht von Hand pflegen** — wird von
   `scripts/fetch-fehlerlisten.ps1` überschrieben. Eigene Einträge gehören in
   `klassische-fehler.txt` (handgeprüft) oder die persönliche `woerterbuch.txt`.
