@@ -173,6 +173,11 @@ public class BenchmarkTests
     //   Plan-Nachtrag und PROJEKT-LOG.md.
     // 2026-09-05, denglisch-verben.txt (Fix fuer "codest" -> "Codes"):
     //   Praezision 100,0 % | Trefferquote 90,4 % (unveraendert) | Fehlalarme 0,0 %
+    // 2026-09-07, haeufige-fehler.txt (836 gefilterte Wikipedia-Tippfehler):
+    //   alle drei Kennzahlen UNVERAENDERT - die Liste beruehrt keinen der 206
+    //   Log-Faelle (die stammen aus echtem Tippverhalten, nicht aus klassischen
+    //   Woerterbuch-Tippfehlern). Trefferquote auf UNGESEHENEN Tippfehlern
+    //   siehe GaengigeTippfehlerBenchmarkTests (keine Ratsche).
     private const double StandPraezision = 1.0;
     private const double StandTrefferquote = 0.903; // exakt 103/114 = 0,90350...
     private const double StandFehlalarme = 0.0;

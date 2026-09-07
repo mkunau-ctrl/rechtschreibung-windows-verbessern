@@ -53,6 +53,7 @@ public static class RepoFiles
     public static CorrectionDictionary LoadDictionary()
     {
         var lines = new List<string>();
+        lines.AddRange(Optional(Path.Combine(BundledDir, "haeufige-fehler.txt")));
         lines.AddRange(Optional(Path.Combine(BundledDir, "klassische-fehler.txt")));
         lines.AddRange(Optional(Path.Combine(BundledDir, "standard-vertipper.txt")));
         // Die persoenliche woerterbuch.txt des Nutzers bleibt bewusst aussen vor:

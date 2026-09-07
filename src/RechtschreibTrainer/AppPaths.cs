@@ -24,6 +24,13 @@ internal static class AppPaths
     /// <summary>Mitgelieferte Liste klassischer deutscher Rechtschreibfehler.</summary>
     public static string ClassicMistakes => Path.Combine(AppContext.BaseDirectory, "klassische-fehler.txt");
 
+    /// <summary>
+    /// Mitgelieferte, automatisch erzeugte Liste häufiger deutscher Tippfehler
+    /// (aus der Wikipedia-Tippfehlerliste, streng gefiltert — siehe
+    /// scripts/fetch-fehlerlisten.ps1 und data/HERKUNFT.md).
+    /// </summary>
+    public static string CommonMistakes => Path.Combine(AppContext.BaseDirectory, "haeufige-fehler.txt");
+
     /// <summary>Mitgelieferte eingedeutschte englische Tech-Verben (coden, committen, pushen …).</summary>
     public static string DenglischVerbs => Path.Combine(AppContext.BaseDirectory, "denglisch-verben.txt");
 

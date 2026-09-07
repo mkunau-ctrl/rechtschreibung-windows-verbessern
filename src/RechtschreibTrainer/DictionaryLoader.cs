@@ -24,6 +24,12 @@ internal static class DictionaryLoader
     {
         var lines = new List<string>();
 
+        // Reihenfolge: zuerst die automatisch erzeugte Wikipedia-Liste, dann die
+        // handgepflegten Listen (die bei einem Konflikt gewinnen sollen — späterer
+        // Eintrag gewinnt in CorrectionDictionary), zuletzt die Benutzerdatei.
+        if (File.Exists(AppPaths.CommonMistakes))
+            lines.AddRange(File.ReadAllLines(AppPaths.CommonMistakes));
+
         if (File.Exists(AppPaths.ClassicMistakes))
             lines.AddRange(File.ReadAllLines(AppPaths.ClassicMistakes));
 
