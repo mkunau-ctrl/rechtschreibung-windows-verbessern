@@ -1,5 +1,30 @@
 # Projekt-Log — Rechtschreib-Trainer (Windows)
 
+## 2026-10-12 – PC-Hub-Anbindung (status.json)
+
+**Was:** Die Autokorrektur schreibt alle 30 s (und bei Pause/Fortsetzen sowie
+beim Start) eine `status.json` nach `%APPDATA%\RechtschreibTrainer\status.json`
+(`AppPaths.StatusPath`, überschreibbar per `RECHTSCHREIBTRAINER_STATUS`).
+Neu: `StatusTracker` + `StatusFileWriter` in Core (9 neue xUnit-Tests),
+Verdrahtung in `TrayApp` (Tracker, 30-s-Timer, Hooks in `OnCorrectionApplied`
+und `TogglePause`, Timer-Stopp in `ExitApp`). Branch `hub-anbindung`.
+
+**Warum:** Der PC-Hub (eigenes Projekt) soll pro Tool Ampel und Zahlen zeigen.
+
+**Entscheidungen:**
+- Nur Zähler und Zustand (Live-Korrektur aktiv/pausiert, Korrekturen heute und
+  gesamt, Laufzeit) — **nie Wörter** aus `korrekturen.jsonl` (Datenschutz,
+  per Test abgesichert). Deshalb auch kein Log-Auszug im Hub.
+- Keine Einstellungen über den Hub in v1, weil `tasten.txt` Text ist.
+- Schreiben ist best effort und atomar; Fehler stören die Korrektur nie.
+
+**Stand:** Core-Tests grün (209). **App-Verdrahtung ungebaut (Defender):**
+Windows Defender blockierte `KeyboardHook.cs` beim Build (CS1504), daher nicht
+kompiliert und nicht getestet; nichts umgangen.
+**Offen:** Defender-Freigabe, dann `dotnet build RechtschreibTrainer.sln -c Release`.
+Installation per `scripts\install.ps1` macht der Nutzer — sie beendet das
+laufende Programm; danach Handtest (status.json erscheint, Zähler steigen).
+
 ## 2026-09-07 – Häufige-Fehler-Liste aus der Wikipedia-Tippfehlerliste
 
 **Was:** Eine neue mitgelieferte Datei

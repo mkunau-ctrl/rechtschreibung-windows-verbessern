@@ -41,6 +41,8 @@ internal sealed class TrayApp : ApplicationContext
     /// und müssen bei der Ersetzung mitbehandelt werden.
     /// </summary>
     private readonly StringBuilder _typedSinceWord = new();
+    private readonly StatusTracker _status;
+    private readonly System.Windows.Forms.Timer _statusTimer = new() { Interval = 30_000 };
 
     public TrayApp()
     {
@@ -58,6 +60,13 @@ internal sealed class TrayApp : ApplicationContext
             record => LearnStore.Append(AppPaths.CorrectionLog, record));
         _controller.CorrectionApplied += OnCorrectionApplied;
         _controller.CorrectionRejected += OnCorrectionRejected;
+        int heute = 0, gesamt = 0;
+        try { (heute, gesamt) = StatusTracker.Zaehle(LearnStore.ReadAll(AppPaths.CorrectionLog), DateTime.Now); }
+        catch { /* ohne Vorwerte starten */ }
+        _status = new StatusTracker(DateTime.Now, heute, gesamt);
+        _statusTimer.Tick += (_, _) => StatusSchreiben();
+        _statusTimer.Start();
+        StatusSchreiben();
 
         _trayIcon = new NotifyIcon
         {
@@ -240,6 +249,7 @@ internal sealed class TrayApp : ApplicationContext
 
     private void OnCorrectionApplied(CorrectionResult result)
     {
+        _status.KorrekturAngewandt(DateTime.Now);
         _correctionCount++;
         _trayIcon.Text = $"Rechtschreib-Trainer — {_correctionCount} Korrekturen";
     }
@@ -294,9 +304,14 @@ internal sealed class TrayApp : ApplicationContext
         _lastForeground = Win32.GetForegroundWindow();
     }
 
+    private void StatusSchreiben()
+        => StatusFileWriter.Write(AppPaths.StatusPath, _status.BuildJson(DateTime.Now));
+
     private void TogglePause()
     {
         _controller.Paused = !_controller.Paused;
+        _status.SetzePause(_controller.Paused);
+        StatusSchreiben();
 
         if (_controller.Paused)
         {
@@ -386,6 +401,7 @@ internal sealed class TrayApp : ApplicationContext
         Win32.UnregisterHotKey(_hotkeyForm.Handle, HotkeyRecord);
         Win32.UnregisterHotKey(_hotkeyForm.Handle, HotkeyPause);
         Win32.UnregisterHotKey(_hotkeyForm.Handle, HotkeyUndo);
+        _statusTimer.Stop();
         _trayIcon.Visible = false;
         _trayIcon.Dispose();
         _hotkeyForm.Close();

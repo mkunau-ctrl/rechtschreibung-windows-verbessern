@@ -81,6 +81,9 @@ Doku auf Deutsch. Datenschutz beachten (siehe README-Abschnitt „Sicherheit").
   Viren- & Bedrohungsschutz → Schutzverlauf → Erkennung zulassen/wiederherstellen,
   oder den Projektordner als Ausnahme eintragen. **Nicht** versuchen, den
   Code so umzuschreiben, dass er der Erkennung entgeht.
+- **PC-Hub-Anbindung:** Das Programm schreibt `%APPDATA%\RechtschreibTrainer\status.json`
+  (nur Zähler/Zustand, nie getippter Text; Pfad per Umgebungsvariable
+  `RECHTSCHREIBTRAINER_STATUS` überschreibbar). Logik in `StatusTracker`/`StatusFileWriter` (Core).
 - Hotkeys sind über `Dokumente\RechtschreibTrainer\tasten.txt` vom Nutzer
   änderbar (Standard: Strg+Alt+R Mitschreiben, Strg+Alt+P Pause, Strg+Alt+Z
   Undo). Schlägt eine Registrierung fehl, meldet die App das per Tray-Balloon.

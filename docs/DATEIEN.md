@@ -161,6 +161,8 @@ Kein Windows, keine Dateizugriffe im Kern, alles unit-testbar.
 | `WordList.cs` | Die geladenen Wortlisten im Speicher: kennt Wörter, Häufigkeiten, Substantive, Eigennamen und die „bleibt klein"-Ausnahmen. |
 | `LiveCorrectionController.cs` | Bindeglied: nimmt fertige Wörter, holt die Korrektur, stößt Ersetzung + Protokoll an, verwaltet Rückgängig. Kennt kein Windows — Ersetzen und Loggen sind Rückrufe. |
 | `LearnStore.cs` | Hängt eine Korrektur als JSON-Zeile an `korrekturen.jsonl` an; liest sie beim Start auch wieder ein (`ReadAll`). |
+| `StatusTracker.cs` | Zählt angewandte Korrekturen (heute/gesamt, Pause, Laufzeit) und baut die `status.json` für den PC-Hub. Enthält nur Zähler und Zustand, nie getippten Text. |
+| `StatusFileWriter.cs` | Schreibt die `status.json` atomar (Temp-Datei + Ersetzen), UTF-8 ohne BOM, wirft nie (best effort). |
 | `DictionaryDistiller.cs` | Zählt (vorher,nachher)-Paare aus dem Korrektur-Log; ab einem Schwellwert ein Vorschlag fürs Wörterbuch. Schließt Satzanfang-Großschreibung grundsätzlich aus (siehe Ablauf, Schritt 10). |
 | `HotkeySpec.cs` | Wandelt Text wie `Strg+Alt+R` in Windows-Tastencodes. |
 
@@ -176,7 +178,7 @@ Kein Windows, keine Dateizugriffe im Kern, alles unit-testbar.
 | `DictionaryLoader.cs` | Lädt die Wörterbücher in der Reihenfolge `haeufige-fehler.txt` → `klassische-fehler.txt` → `standard-vertipper.txt` → Benutzerdatei und die große Wortliste. Fehlen die Datendateien, läuft das Programm ohne Rechtschreibprüfung weiter. |
 | `HotkeySettings.cs` | Liest `tasten.txt`, legt sie beim ersten Start an. |
 | `NeverCorrectStore.cs` | Verwaltet `nie-korrigieren.txt`; neue Einträge wirken sofort. |
-| `AppPaths.cs` | **Alle Dateipfade an einem Ort.** Erste Anlaufstelle bei der Frage „wo liegt was?". |
+| `AppPaths.cs` | **Alle Dateipfade an einem Ort.** Erste Anlaufstelle bei der Frage „wo liegt was?". Enthält auch `StatusPath` (`%APPDATA%\RechtschreibTrainer\status.json`, Umgebungsvariable `RECHTSCHREIBTRAINER_STATUS` überschreibt) für den PC-Hub. |
 | `IconFactory.cs` | Zeichnet die Tray-Icons zur Laufzeit: grün = bereit, blau = korrigiert gerade, grau = pausiert, roter Punkt = Mitschreiben läuft. |
 | `DebugLog.cs` | Diagnose-Protokoll. **Nur aktiv, wenn `debug.log` oder `debug.on` im Datenordner liegt** — sonst wird nichts geschrieben. |
 | `HotkeyForm.cs` | Unsichtbares Fenster; empfängt Hotkey-Nachrichten und dient als Ziel, um Hook-Ereignisse auf den UI-Thread zu holen. |

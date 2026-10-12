@@ -55,5 +55,11 @@ internal static class AppPaths
     /// <summary>Eigene Namen des Nutzers, im Datenordner, editierbar.</summary>
     public static string UserNames => Path.Combine(DataDir, "eigene-namen.txt");
 
+    /// <summary>Status für den PC-Hub (nur Zähler und Zustand, nie getippter Text).</summary>
+    public static string StatusPath =>
+        Environment.GetEnvironmentVariable("RECHTSCHREIBTRAINER_STATUS") is { Length: > 0 } p
+            ? p
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "RechtschreibTrainer", "status.json");
+
     public static void EnsureDataDir() => Directory.CreateDirectory(DataDir);
 }
