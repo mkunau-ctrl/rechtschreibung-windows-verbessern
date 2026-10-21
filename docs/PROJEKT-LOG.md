@@ -1,5 +1,106 @@
 # Projekt-Log — Rechtschreib-Trainer (Windows)
 
+## 2026-10-21/22 – Qualitätsrunde 3: Analyse der echten Tippdaten + große Verbesserung
+
+**Was:** Erst eine ausführliche Auswertung von `debug.log` (seit 2026-09-03:
+49.585 Anschläge, 8.318 Wörter, 1.412 Ersetzungen) und `korrekturen.jsonl`
+(1.482 Einträge), dann Umsetzung des Plans
+`docs/superpowers/plans/2026-10-21-qualitaet-runde-3-plan.md` (dort auch alle
+Analysezahlen). Branch `feat/qualitaet-runde-3` (von `hub-anbindung`, damit
+die Hub-Anbindung mitkommt). Die Auswertungsskripte liefen lokal in Python und
+sind bewusst **nicht** im Repo, weil sie auf dem privaten Text arbeiten.
+
+Gefunden und behoben:
+1. **Shift/AltGr/CapsLock kamen nie an** (`GetKeyboardState` im LL-Hook =
+   Zustand des eigenen Threads). Aus `@` wurde `q`, aus `?` `ß`; beim Neutippen
+   wurde 12× die E-Mail-Adresse des Nutzers zerstört. → `GetAsyncKeyState`,
+   `ToUnicode` mit Flag 4, `KeyInput` (Kürzel = Kontextbruch).
+2. **~15 % der Großschreibungen mitten im Satz falsch** (`ich würde`→`Würde`,
+   `leider`, `testen`, `senden`, `ein paar`, `alle drei`). `IsCapitalisedOnly`
+   prüfte nicht, ob das Wort klein gültig ist. → Korpus `data/schreibung.txt`
+   (Tatoeba, nur Wörter mitten im Satz gezählt) + `klein-gueltig.txt` +
+   erweiterter Substantiv-Beleg (Kontraktion, Zahl, Artikel+Adjektiv) +
+   „zum Testen"-Regel. Vornamen wie `anders`/`lasse` nur noch als Name, wenn
+   der Korpus es hergibt.
+3. **Lernen brannte das ein** (`würde=Würde`, `weiß=Weiß`, `kriege=Kriege`,
+   `anderern=Wanderern` in `woerterbuch.txt`). → Distiller lernt keine reinen
+   Groß/Klein-Paare mehr; persönliche `woerterbuch.txt` bereinigt (56 Einträge
+   raus, Sicherung `woerterbuch.sicherung-2026-10-22.txt`), `Kleinanzeigen` in
+   `eigene-namen.txt`.
+4. **12 % aller Wörter nie geraten**: das erste nach einer Pause > 4 s. →
+   Pausen-Regel entfernt.
+5. **`woerter.txt` kaputt**: frami ISO-8859-1 ungewandelt (57.371 Zeilen),
+   393 verbotene Fehlschreibungen und 82.447 Nur-Kompositum-Stämme als gültig.
+   → `scripts/erzeuge-wortdaten.py`.
+6. **Kurze/doppelte/zusammengeklebte Vertipper** (`ihc`, `mla`, `ghet`, `kannn`,
+   `vorallem`, `damitich`) und **zwei Fehler** (`vileicht`, `eigentihc`) →
+   neue Regeln im `SpellCorrector`, abgesichert durch Kompositum-Schutz.
+7. **Echtwort-Fehler** (`genua`→`genau`, `mienen`→`meinen`), Erstbuchstaben-
+   Fehlgriffe (`anderern`→`Wanderern`) behoben.
+8. **E-Mails/URLs/Pfade** wurden angefasst (`test@beispiel.de`→`Test@Beispiel.De`);
+   Satzanfang nach `bzw.`, `ca.`, `19.`. → `DoNotTouch` im `WordWatcher`,
+   `Abbreviations`.
+9. **Datenschutz**: Tastenlog schrieb im Hook mit, auch in Passwortfeldern.
+   → Hook protokolliert gar keine Anschläge mehr; Passwort-Kontext
+   (`SecretTriggers`, Nutzerwunsch: „das nächste Wort nicht weiter angucken").
+   `debug.on`/`debug.log` gelöscht (Nutzerwunsch).
+10. **Strg+Alt+Z nie benutzt** → Rücktaste ins korrigierte Wort = Ablehnung,
+    ab 2× auf die Nie-Liste.
+11. LibreOffice-Autokorrektur als zweite Fehlerliste (+161 Paare, 1.006 gesamt).
+12. Qualitätsrunde-2-Punkte 1 (Schlussprüfung), 2 (LibreOffice) und 4a
+    (Kompositum-Schutz) damit erledigt.
+
+**Warum:** Nutzerwunsch: prüfen, ob alles aufgezeichnet wurde, ausführlich
+analysieren und die Autokorrektur „massiv" verbessern; Passwörter schützen,
+Tastenlog aus.
+
+**Entscheidungen:**
+- **Neuer Alltags-Benchmark mit Satzkontext** (`alltag-faelle.tsv`, 250 Fälle)
+  als Hauptmesslatte. Nachgebaut nach den Mustern der echten Daten, aber mit
+  **neutralen Sätzen** — das Repo ist öffentlich, keine Originalsätze/Namen.
+- **Großschreibung per Korpus statt per Ausnahmeliste.** Die Runde-2-Frage
+  „Artikel-Beleg für alle Substantive?" (vom Nutzer gestrichen) stellt sich
+  nicht mehr: Beleg nur, wo der Korpus mehrdeutig ist. Schwellen 90 %/20 %
+  (20 statt 30, weil `essen` bei 29,8 % liegt). `mehrdeutige-substantive.txt`
+  und `klein-schreiben.txt` verschärfen nur noch.
+- **Zwei Fehler auf einmal** (am 2026-09-06 verworfen) diesmal zugelassen,
+  weil Kompositum-Schutz, Strenge-Dominanz (10×) und der Ausschluss von
+  „zu viel + vergessen" die Fehlgriffe (`gebaüde`→`gebadet`,
+  `auffaekt`→`Affekt`) nachweislich verhindern. Gemessen: Präzision 100 %.
+- Kompositum-Schutz gibt nach, wenn ein häufiges Wort einen Buchstaben
+  entfernt ist (sonst blieben `russsich`, `mittlerweilen` stehen).
+- `wil` bleibt stehen: `will` und `weil` sind gleich häufig — nicht raten.
+- Großer 10.000-Wörter-Text bleibt **keine** Ratsche (frühere Nutzervorgabe).
+- Python (vom Nutzer installiert) für das Erzeugungsskript, weil PowerShell
+  Tatoebas `.bz2` nicht entpacken kann.
+- Nicht gemacht: Wörter zusammenfügen (`Recht schreibung`, Runde 2 Punkt 4b)
+  und alter git-stash — siehe Offene Punkte.
+
+**Zahlen (vorher → nachher):**
+
+| Benchmark | vorher | nachher |
+|---|---|---|
+| Alltag (Kontext): Präzision / Treffer / Fehlalarme | 52,6 / 67,8 / 46,4 % | **100 / 97,6 / 0 %** |
+| Benchmark Einzelwörter: Präzision / Treffer | 100 / 90,4 % | **100 / 94,7 %** |
+| Fließtext | 96,6 % | **98,3 %** |
+| Großer Text: gesamt / Treffer / Fehlalarme | 82,6 / 58,8 / 1,20 % | **85,6 / 64,7 / 0,15 %** |
+| Holdout ungesehene Tippfehler | 60/76 | **62/76** |
+| Tests | 209 | **332** |
+
+**Stand danach:** alles grün, gemergt nach `main`, gepusht, per
+`scripts/install.ps1` installiert (siehe unten im Abschnitt). Benutzerdaten
+bereinigt, `debug.on`/`debug.log` gelöscht.
+
+**Offene Punkte / Nächste Schritte:**
+- **Handtest durch den Nutzer**: Großbuchstaben/`?`/`@` tippen (kommen jetzt
+  an und werden nicht mehr zerstört), E-Mail-Adresse tippen, „ich würde",
+  „das passwort ist …", Rücktaste direkt nach einer Korrektur.
+- Wörter zusammenfügen (`Recht schreibung` → `Rechtschreibung`, Runde 2 Punkt 4b).
+- Echtwort-Fehler mit Kontext (`ich weis` → `weiß`) — braucht Bigramme.
+- Alter `git stash@{0}` aus einer frühen Sitzung prüfen und löschen.
+- `keystrokes.log` (Mitschreib-Modus vom 2026-09-04) liegt noch im Datenordner.
+- Auto-Weiter wurde angeboten, keine Antwort — nicht erneut fragen.
+
 ## 2026-10-12 – PC-Hub-Anbindung (status.json)
 
 **Was:** Die Autokorrektur schreibt alle 30 s (und bei Pause/Fortsetzen sowie
