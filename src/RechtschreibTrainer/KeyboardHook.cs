@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Text;
+using RechtschreibTrainer.Core;
 
 namespace RechtschreibTrainer;
 
@@ -46,7 +47,37 @@ internal sealed class KeyboardHook : IDisposable
     private static extern IntPtr GetModuleHandle(string? lpModuleName);
 
     [DllImport("user32.dll")]
-    private static extern bool GetKeyboardState(byte[] lpKeyState);
+    private static extern short GetAsyncKeyState(int vKey);
+
+    [DllImport("user32.dll")]
+    private static extern short GetKeyState(int nVirtKey);
+
+    private const int VK_SHIFT = 0x10, VK_CONTROL = 0x11, VK_MENU = 0x12, VK_CAPITAL = 0x14;
+    private const int VK_LSHIFT = 0xA0, VK_RSHIFT = 0xA1, VK_LCONTROL = 0xA2, VK_RCONTROL = 0xA3;
+    private const int VK_LMENU = 0xA4, VK_RMENU = 0xA5, VK_LWIN = 0x5B, VK_RWIN = 0x5C;
+
+    /// <summary>ToUnicode-Flag: Tastaturzustand (Tottasten) nicht verändern — sonst stört der Hook ^ und ´ des Nutzers.</summary>
+    private const uint ToUnicodeKeepState = 0x4;
+
+    private static bool IsDown(int vk) => (GetAsyncKeyState(vk) & 0x8000) != 0;
+
+    private static bool IsModifier(uint vk) => vk is VK_SHIFT or VK_CONTROL or VK_MENU or VK_CAPITAL
+        or VK_LSHIFT or VK_RSHIFT or VK_LCONTROL or VK_RCONTROL or VK_LMENU or VK_RMENU or VK_LWIN or VK_RWIN;
+
+    /// <summary>
+    /// Baut den Tastaturzustand aus dem echten Zustand der Zusatztasten.
+    /// <c>GetKeyboardState</c> taugt im Low-Level-Hook nicht (liefert den
+    /// Zustand des eigenen Threads) — damit kamen bis Runde 3 nie
+    /// Großbuchstaben, "?", "@" usw. an, siehe <see cref="KeyInput"/>.
+    /// </summary>
+    private static byte[] CurrentKeyState()
+    {
+        var state = new byte[256];
+        foreach (var vk in new[] { VK_SHIFT, VK_LSHIFT, VK_RSHIFT, VK_CONTROL, VK_LCONTROL, VK_RCONTROL, VK_MENU, VK_LMENU, VK_RMENU })
+            if (IsDown(vk)) state[vk] = 0x80;
+        if ((GetKeyState(VK_CAPITAL) & 1) != 0) state[VK_CAPITAL] = 0x01;
+        return state;
+    }
 
     [DllImport("user32.dll")]
     private static extern int ToUnicode(uint wVirtKey, uint wScanCode, byte[] lpKeyState,
@@ -63,6 +94,9 @@ internal sealed class KeyboardHook : IDisposable
 
     /// <summary>Pfeil-, Pos1/Ende-, Bild-auf/ab- oder Entf-Taste — Signal, den Wortpuffer zu verwerfen.</summary>
     public event Action? NavigationKeyPressed;
+
+    /// <summary>Tastenkürzel (Strg+V, Alt+Tab …), Steuerzeichen oder Tottaste — Wortpuffer verwerfen.</summary>
+    public event Action? ContextBroken;
 
     public bool IsInstalled => _hookId != IntPtr.Zero;
 
@@ -100,11 +134,21 @@ internal sealed class KeyboardHook : IDisposable
             var hookStruct = Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam);
 
             // Eigene injizierte Tastenanschläge nicht erneut verarbeiten.
-            if (hookStruct.dwExtraInfo != InjectedMarker)
+            // Einzelne Anschläge werden bewusst NICHT mehr protokolliert (auch
+            // nicht im Debug-Log): Das wäre ein Tastenprotokoll inklusive
+            // Passwörtern. Nutzerwunsch 2026-10-21: Tastenlog bleibt aus.
+            if (hookStruct.dwExtraInfo != InjectedMarker && !IsModifier(hookStruct.vkCode))
             {
+                var ctrl = IsDown(VK_CONTROL);
+                var alt = IsDown(VK_MENU);
+                var win = IsDown(VK_LWIN) || IsDown(VK_RWIN);
+                var shortcut = win || (ctrl != alt); // Strg+… oder Alt+…, aber nicht AltGr (= beide)
+
                 if (hookStruct.vkCode == VK_BACK)
                 {
-                    BackspacePressed?.Invoke();
+                    // Strg+Rücktaste löscht ein ganzes Wort - nicht nachbildbar.
+                    if (shortcut) ContextBroken?.Invoke();
+                    else BackspacePressed?.Invoke();
                 }
                 else if (hookStruct.vkCode == VK_RETURN)
                 {
@@ -116,20 +160,18 @@ internal sealed class KeyboardHook : IDisposable
                 }
                 else
                 {
-                    var keyboardState = new byte[256];
-                    GetKeyboardState(keyboardState);
                     var sb = new StringBuilder(8);
-                    int result = ToUnicode(hookStruct.vkCode, hookStruct.scanCode, keyboardState, sb, sb.Capacity, 0);
-                    if (result > 0)
+                    int result = ToUnicode(hookStruct.vkCode, hookStruct.scanCode, CurrentKeyState(), sb, sb.Capacity, ToUnicodeKeepState);
+                    var input = KeyInput.Classify(result > 0 ? sb.ToString(0, result) : null, ctrl, alt, win, deadKey: result < 0);
+                    switch (input.Kind)
                     {
-                        var text = sb.ToString();
-                        DebugLog.Write($"key vk={hookStruct.vkCode:X2} -> '{text}'");
-                        foreach (char c in text)
-                            CharacterTyped?.Invoke(c);
-                    }
-                    else
-                    {
-                        DebugLog.Write($"key vk={hookStruct.vkCode:X2} -> ToUnicode={result}");
+                        case KeyInputKind.Text:
+                            foreach (char c in input.Text)
+                                CharacterTyped?.Invoke(c);
+                            break;
+                        case KeyInputKind.ContextBreak:
+                            ContextBroken?.Invoke();
+                            break;
                     }
                 }
             }

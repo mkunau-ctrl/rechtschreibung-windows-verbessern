@@ -54,8 +54,12 @@ public sealed class WordWatcher
     // Wort, das an "." oder ":" endete und auf das nächste Zeichen wartet.
     private (string Word, char Boundary, WordContext Context)? _held;
 
-    // Wie viele der nächsten Wörter noch zum Passwort-Kontext gehören.
+    // Wie viele der nächsten Tokens noch zum Passwort-Kontext gehören.
     private int _secretWordsLeft;
+
+    // Der aktuelle Token (bis zum nächsten Leerraum) ist geheim - auch über
+    // Satzzeichen hinweg ("abc!def" bleibt als Ganzes geheim).
+    private bool _tokenIsSecret;
 
     public event Action<WordCompleted>? WordCompleted;
 
@@ -94,12 +98,13 @@ public sealed class WordWatcher
             }
 
             ReleaseHeld(nextCharContinuesToken: false, typedAfter: c.ToString());
-            if (char.IsWhiteSpace(c))
-                _tokenIsTechnical = false;
             // weitere Satzzeichen ("gut.)", "Ja.“") laufen unten normal weiter -
             // ohne Wort im Puffer wird dabei nichts gemeldet.
             if (char.IsWhiteSpace(c))
+            {
+                EndToken();
                 return;
+            }
         }
 
         if (IsWordChar(c))
@@ -127,7 +132,7 @@ public sealed class WordWatcher
         var emitted = Flush(c);
 
         if (char.IsWhiteSpace(c))
-            _tokenIsTechnical = false;
+            EndToken();
 
         if (EndsSentence(c))
             _sentenceStart = true;
@@ -166,8 +171,15 @@ public sealed class WordWatcher
         else
             Flush('\n');
         _sentenceStart = true;
-        _tokenIsTechnical = false;
+        EndToken();
         _secretWordsLeft = 0;
+    }
+
+    /// <summary>Leerraum/Enter: der Token ist zu Ende.</summary>
+    private void EndToken()
+    {
+        _tokenIsTechnical = false;
+        _tokenIsSecret = false;
     }
 
     /// <summary>
@@ -191,8 +203,9 @@ public sealed class WordWatcher
         _previousWord = null;
         _wordBeforePrevious = null;
         _tokenIsTechnical = false;
-        // Passwort-Kontext bleibt bewusst bestehen: ein Klick ins Passwortfeld
-        // direkt nach "Passwort:" darf den Schutz nicht aufheben.
+        // Passwort-Kontext (auch _tokenIsSecret) bleibt bewusst bestehen: ein
+        // Klick ins Passwortfeld direkt nach "Passwort:" darf den Schutz nicht
+        // aufheben.
     }
 
     private void ReleaseHeld(bool nextCharContinuesToken, string typedAfter)
@@ -235,7 +248,7 @@ public sealed class WordWatcher
 
     private WordContext BuildContext(string word)
     {
-        var secret = _secretWordsLeft > 0;
+        var secret = _secretWordsLeft > 0 || _tokenIsSecret;
         var doNotTouch = secret || _tokenIsTechnical || MixesDigitsAndLetters(word);
         return new WordContext(
             _sentenceStart,
@@ -251,12 +264,19 @@ public sealed class WordWatcher
         WordCompleted?.Invoke(new WordCompleted(word, boundary, context, typedAfter));
 
         if (context.IsSecret)
-            _secretWordsLeft--;
+        {
+            // gezählt wird pro Token, nicht pro Wort
+            if (!_tokenIsSecret)
+                _secretWordsLeft--;
+            _tokenIsSecret = true;
+        }
         else if (SecretTriggers.Contains(word))
             _secretWordsLeft = SecretWordCount;
 
-        // Ein Satzende beendet den Passwort-Kontext ("… ist abc. Danach …").
-        if ((endsSentence || boundary is '!' or '?') && !SecretTriggers.Contains(word))
+        // Ein Satzende nach einem normalen Wort beendet den Passwort-Kontext.
+        // Nach einem geheimen Wort nie: das Satzzeichen kann Teil des
+        // Passworts sein (Sicherheits-Review 2026-10-22).
+        if ((endsSentence || boundary is '!' or '?') && !context.IsSecret && !SecretTriggers.Contains(word))
             _secretWordsLeft = 0;
 
         // Technische und geheime Wörter taugen nicht als Kontext fürs nächste

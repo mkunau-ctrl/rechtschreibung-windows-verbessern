@@ -92,10 +92,13 @@ internal sealed class TrayApp : ApplicationContext
         _keyboard.BackspacePressed += () => Post(OnBackspace);
         _keyboard.EnterPressed += () => Post(OnEnter);
         _keyboard.NavigationKeyPressed += () => Post(DropContext);
+        _keyboard.ContextBroken += () => Post(DropContext);
         _mouse.ClickDetected += () => Post(DropContext);
         _watcher.WordCompleted += w =>
         {
-            DebugLog.Write($"WordCompleted '{w.Word}' boundary={(w.Boundary == '\n' ? "\\n" : w.Boundary.ToString())} satzanfang={w.Context.IsSentenceStart}");
+            // Technische und geheime Wörter erscheinen nie im Debug-Log.
+            var shown = w.Context.DoNotTouch ? "(nicht angefasst)" : $"'{w.Word}'";
+            DebugLog.Write($"WordCompleted {shown} boundary={(w.Boundary == '\n' ? "\\n" : w.Boundary.ToString())} satzanfang={w.Context.IsSentenceStart}");
             _pendingWord = w;
             _typedSinceWord.Clear();
         };
@@ -186,8 +189,20 @@ internal sealed class TrayApp : ApplicationContext
         _watcher.Invalidate();
     }
 
+    /// <summary>
+    /// Nach so langer Tipppause wird ein Wort, das an "." oder ":" endet und
+    /// auf das nächste Zeichen wartet, trotzdem geprüft ("… ist gut." als
+    /// letztes Wort einer Nachricht).
+    /// </summary>
+    private const int ReleaseHeldWordAfterMs = 600;
+
     private void MaybeCorrectPendingWord()
     {
+        if (_pendingWord is null && _watcher.HasHeldWord
+            && (DateTime.Now - _lastActivity).TotalMilliseconds > ReleaseHeldWordAfterMs
+            && !Win32.FocusedFieldIsPassword())
+            _watcher.ReleaseHeldWord();
+
         if (_pendingWord is not { } word)
             return;
 
@@ -221,10 +236,11 @@ internal sealed class TrayApp : ApplicationContext
             _lastForeground = current;
             DropContext();
         }
-        else if ((DateTime.Now - _lastActivity).TotalSeconds > 4)
-        {
-            DropContext();
-        }
+        // Bis Runde 3 wurde hier auch nach 4 s Tipppause der Kontext
+        // verworfen. Ohne Taste, Klick oder Fensterwechsel kann sich der
+        // Cursor aber nicht bewegen - und die Regel verhinderte, dass das
+        // erste Wort nach jeder Denkpause geraten wurde (12 % aller Wörter
+        // in den echten Daten, z. B. "eigntlich", "vielleich"). Entfernt.
     }
 
     // --- Ersetzen ---

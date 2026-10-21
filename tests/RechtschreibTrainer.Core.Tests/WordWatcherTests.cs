@@ -426,6 +426,22 @@ public class WordWatcherTests
         Assert.False(seen.Single(s => s.Word == "danach").Context.IsSecret);
     }
 
+    [Theory]
+    [InlineData("passwort abc!def ")]
+    [InlineData("passwort abc?def ")]
+    [InlineData("passwort abc.def ")]
+    [InlineData("passwort abc. def ")]
+    public void SatzzeichenImPasswortBeendetDenSchutzNicht(string text)
+    {
+        // Sicherheits-Review: "abc!def" - das "!" darf den Passwort-Kontext
+        // nicht mitten im Geheimnis beenden.
+        var (w, seen) = Build();
+
+        Type(w, text);
+
+        Assert.True(seen.Single(s => s.Word == "def").Context.IsSecret);
+    }
+
     [Fact]
     public void DasAusloesewortSelbstDarfKorrigiertWerden()
     {
