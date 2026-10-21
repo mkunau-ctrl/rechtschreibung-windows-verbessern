@@ -17,10 +17,14 @@ internal static class DictionaryLoader
     /// <summary>Ab wie vielen gleichen Korrekturen ein Wort automatisch ins Wörterbuch wandert.</summary>
     private const int LearnThreshold = 3;
 
-    public static CorrectionDictionary Load() => Load(out _);
+    public static CorrectionDictionary Load() => Load(null, out _);
 
+    /// <param name="spelling">
+    /// Die geladene Wortliste — damit nur gelernt wird, was die heutige Logik
+    /// genauso entscheidet (siehe <see cref="DictionaryDistiller.Distill"/>).
+    /// </param>
     /// <param name="learned">Neu gelernte Einträge, für eine Benachrichtigung im Tray.</param>
-    public static CorrectionDictionary Load(out IReadOnlyList<DictionaryDistiller.Candidate> learned)
+    public static CorrectionDictionary Load(SpellCorrector? spelling, out IReadOnlyList<DictionaryDistiller.Candidate> learned)
     {
         var lines = new List<string>();
 
@@ -42,7 +46,10 @@ internal static class DictionaryLoader
             File.WriteAllText(AppPaths.UserDictionary, UserFileHeader);
         }
 
-        learned = LearnFromOwnLog();
+        // Prüf-Korrektor: nur die mitgelieferten Listen + Wortliste, ohne die
+        // persönliche Datei - die soll ja gerade erst ergänzt werden.
+        var check = spelling is null ? null : new OfflineCorrector(CorrectionDictionary.FromLines(lines), spelling);
+        learned = LearnFromOwnLog(check);
 
         lines.AddRange(File.ReadAllLines(AppPaths.UserDictionary));
 
@@ -58,7 +65,7 @@ internal static class DictionaryLoader
     /// <see cref="OfflineCorrector"/>), das hier verhindert nur unnötigen
     /// Wörterbuch-Wildwuchs.
     /// </summary>
-    private static IReadOnlyList<DictionaryDistiller.Candidate> LearnFromOwnLog()
+    private static IReadOnlyList<DictionaryDistiller.Candidate> LearnFromOwnLog(OfflineCorrector? check)
     {
         // Satzanfang-Grossschreibung wird bereits in DictionaryDistiller
         // selbst ausgeschlossen (reine Positionsregel, keine Rechtschreibung).
@@ -78,7 +85,13 @@ internal static class DictionaryLoader
         exclude.UnionWith(ambiguousNouns); // dieselbe Begruendung: braucht Satzkontext, keine feste Regel
         exclude.UnionWith(records.Select(r => r.Before).Where(existing.HasEntry));
 
-        var candidates = DictionaryDistiller.Distill(records, exclude, LearnThreshold);
+        // Ohne Wortliste wird gar nicht gelernt: dann lässt sich nicht prüfen,
+        // ob ein Paar aus dem Log noch der heutigen Logik entspricht.
+        if (check is null)
+            return [];
+
+        var candidates = DictionaryDistiller.Distill(records, exclude, LearnThreshold,
+            c => check.Correct(c.Before, new WordContext(IsSentenceStart: false)).Corrected == c.After);
         if (candidates.Count == 0)
             return candidates;
 

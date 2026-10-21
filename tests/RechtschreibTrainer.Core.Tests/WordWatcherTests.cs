@@ -442,6 +442,30 @@ public class WordWatcherTests
         Assert.True(seen.Single(s => s.Word == "def").Context.IsSecret);
     }
 
+    [Theory]
+    [InlineData("das pasword ist geheim ")]
+    [InlineData("mein passwrot geheim ")]
+    [InlineData("kenwort geheim ")]
+    public void VertipptesAusloesewortSchuetztTrotzdem(string text)
+    {
+        var (w, seen) = Build();
+
+        Type(w, text);
+
+        Assert.True(seen.Single(s => s.Word == "geheim").Context.IsSecret);
+    }
+
+    [Fact]
+    public void KurzeWoerterLoesenDenSchutzNichtUnscharfAus()
+    {
+        // "pin" nur exakt - sonst wuerde "pinn", "pink", "tank" ausloesen.
+        var (w, seen) = Build();
+
+        Type(w, "das ist pink danach ");
+
+        Assert.False(seen.Single(s => s.Word == "danach").Context.IsSecret);
+    }
+
     [Fact]
     public void DasAusloesewortSelbstDarfKorrigiertWerden()
     {

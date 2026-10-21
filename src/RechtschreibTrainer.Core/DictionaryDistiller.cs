@@ -24,10 +24,16 @@ public static class DictionaryDistiller
     /// wie oft sie im Log stehen.
     /// </param>
     /// <param name="threshold">Ab wie vielen gleichen Korrekturen ein Vorschlag entsteht.</param>
+    /// <param name="stillValid">
+    /// Würde die heutige Logik dieses Paar genauso entscheiden? Das Log enthält
+    /// auch Korrekturen älterer, fehlerhafter Versionen — die sollen nicht
+    /// nachträglich fest gelernt werden. Null = keine Prüfung.
+    /// </param>
     public static IReadOnlyList<Candidate> Distill(
         IEnumerable<CorrectionRecord> records,
         IReadOnlySet<string> excludeBefore,
-        int threshold)
+        int threshold,
+        Func<Candidate, bool>? stillValid = null)
     {
         var counts = new Dictionary<(string Before, string After), int>();
         var rejected = new HashSet<(string, string)>();
@@ -62,6 +68,7 @@ public static class DictionaryDistiller
         return counts
             .Where(kv => kv.Value >= threshold && !rejected.Contains(kv.Key))
             .Select(kv => new Candidate(kv.Key.Before, kv.Key.After, kv.Value))
+            .Where(c => stillValid is null || stillValid(c))
             .OrderByDescending(c => c.Count)
             .ToList();
     }
