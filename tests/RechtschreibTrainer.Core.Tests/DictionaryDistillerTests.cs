@@ -126,6 +126,22 @@ public class DictionaryDistillerTests
     }
 
     [Fact]
+    public void LerntNurWasDieHeutigeLogikGenausoEntscheidet()
+    {
+        // Das Log enthaelt noch Korrekturen alter, fehlerhafter Versionen
+        // ("anderern" -> "Wanderern"). Die duerfen nicht nachtraeglich gelernt
+        // werden, nur weil sie oft genug im Log stehen.
+        var records = Enumerable.Repeat(Record("anderern", "Wanderern"), 3)
+            .Concat(Enumerable.Repeat(Record("nciht", "nicht"), 3))
+            .ToArray();
+
+        var result = DictionaryDistiller.Distill(records, NoExclusions, threshold: 3,
+            stillValid: c => c.Before != "anderern");
+
+        Assert.Equal(["nciht"], result.Select(r => r.Before));
+    }
+
+    [Fact]
     public void ZweimalAbgelehntWirdNieMehrKorrigiert()
     {
         var records = new[]

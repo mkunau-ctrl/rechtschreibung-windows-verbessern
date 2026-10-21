@@ -50,8 +50,8 @@ internal sealed class TrayApp : ApplicationContext
 
         AppPaths.EnsureDataDir();
         _keys = HotkeySettings.Load();
-        var dictionary = DictionaryLoader.Load(out var learned);
         var spelling = DictionaryLoader.LoadSpelling();
+        var dictionary = DictionaryLoader.Load(spelling, out var learned);
         _neverCorrect = new NeverCorrectStore(AppPaths.NeverCorrectList);
 
         _controller = new LiveCorrectionController(
@@ -255,7 +255,9 @@ internal sealed class TrayApp : ApplicationContext
     {
         try
         {
-            DebugLog.Write($"Replace delete={cmd.DeleteCount} insert='{cmd.Insert.Replace("\n", "\\n")}'");
+            // Nur Längen: der Ersatztext enthält auch das inzwischen Nachgetippte
+            // (könnte der Anfang eines Passworts sein).
+            DebugLog.Write($"Replace delete={cmd.DeleteCount} insert={cmd.Insert.Length} Zeichen");
             ShowWorking();
             _replacer.Replace(cmd.DeleteCount, cmd.Insert);
         }
