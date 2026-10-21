@@ -41,6 +41,8 @@ internal sealed class TrayApp : ApplicationContext
     /// und müssen bei der Ersetzung mitbehandelt werden.
     /// </summary>
     private readonly StringBuilder _typedSinceWord = new();
+    private readonly StatusTracker _status;
+    private readonly System.Windows.Forms.Timer _statusTimer = new() { Interval = 30_000 };
 
     public TrayApp()
     {
@@ -58,6 +60,14 @@ internal sealed class TrayApp : ApplicationContext
             record => LearnStore.Append(AppPaths.CorrectionLog, record));
         _controller.CorrectionApplied += OnCorrectionApplied;
         _controller.CorrectionRejected += OnCorrectionRejected;
+        _controller.CorrectionRejectedByUser += OnCorrectionRejectedByBackspace;
+        int heute = 0, gesamt = 0;
+        try { (heute, gesamt) = StatusTracker.Zaehle(LearnStore.ReadAll(AppPaths.CorrectionLog), DateTime.Now); }
+        catch { /* ohne Vorwerte starten */ }
+        _status = new StatusTracker(DateTime.Now, heute, gesamt);
+        _statusTimer.Tick += (_, _) => StatusSchreiben();
+        _statusTimer.Start();
+        StatusSchreiben();
 
         _trayIcon = new NotifyIcon
         {
@@ -83,10 +93,14 @@ internal sealed class TrayApp : ApplicationContext
         _keyboard.BackspacePressed += () => Post(OnBackspace);
         _keyboard.EnterPressed += () => Post(OnEnter);
         _keyboard.NavigationKeyPressed += () => Post(DropContext);
+        _keyboard.ContextBroken += () => Post(DropContext);
         _mouse.ClickDetected += () => Post(DropContext);
         _watcher.WordCompleted += w =>
         {
-            DebugLog.Write($"WordCompleted '{w.Word}' boundary={(w.Boundary == '\n' ? "\\n" : w.Boundary.ToString())} satzanfang={w.Context.IsSentenceStart}");
+            // Technische und geheime Wörter erscheinen nie im Debug-Log -
+            // auch nicht ihr Grenzzeichen (könnte Teil eines Passworts sein).
+            if (!w.Context.DoNotTouch)
+                DebugLog.Write($"WordCompleted '{w.Word}' boundary={(w.Boundary == '\n' ? "\\n" : w.Boundary.ToString())} satzanfang={w.Context.IsSentenceStart}");
             _pendingWord = w;
             _typedSinceWord.Clear();
         };
@@ -151,6 +165,8 @@ internal sealed class TrayApp : ApplicationContext
         // inzwischen auf dem Bildschirm hinter dem Wort steht.
         if (_pendingWord is not null)
             _typedSinceWord.Append(c);
+        else
+            _controller.OnCharTyped();
 
         _watcher.OnChar(c);
         if (_recording.IsActive) _recording.AppendChar(c);
@@ -161,6 +177,7 @@ internal sealed class TrayApp : ApplicationContext
         _lastActivity = DateTime.Now;
         // Der Nutzer bessert selbst nach — nichts mehr automatisch ersetzen.
         ClearPending();
+        _controller.OnBackspace(); // löscht er in eine eben korrigierte Stelle, war es eine Ablehnung
         _watcher.OnBackspace();
         if (_recording.IsActive) _recording.AppendBackspace();
     }
@@ -174,11 +191,24 @@ internal sealed class TrayApp : ApplicationContext
     private void DropContext()
     {
         ClearPending();
+        _controller.ForgetLastCorrection();
         _watcher.Invalidate();
     }
 
+    /// <summary>
+    /// Nach so langer Tipppause wird ein Wort, das an "." oder ":" endet und
+    /// auf das nächste Zeichen wartet, trotzdem geprüft ("… ist gut." als
+    /// letztes Wort einer Nachricht).
+    /// </summary>
+    private const int ReleaseHeldWordAfterMs = 600;
+
     private void MaybeCorrectPendingWord()
     {
+        if (_pendingWord is null && _watcher.HasHeldWord
+            && (DateTime.Now - _lastActivity).TotalMilliseconds > ReleaseHeldWordAfterMs
+            && !Win32.FocusedFieldIsPassword())
+            _watcher.ReleaseHeldWord();
+
         if (_pendingWord is not { } word)
             return;
 
@@ -212,10 +242,11 @@ internal sealed class TrayApp : ApplicationContext
             _lastForeground = current;
             DropContext();
         }
-        else if ((DateTime.Now - _lastActivity).TotalSeconds > 4)
-        {
-            DropContext();
-        }
+        // Bis Runde 3 wurde hier auch nach 4 s Tipppause der Kontext
+        // verworfen. Ohne Taste, Klick oder Fensterwechsel kann sich der
+        // Cursor aber nicht bewegen - und die Regel verhinderte, dass das
+        // erste Wort nach jeder Denkpause geraten wurde (12 % aller Wörter
+        // in den echten Daten, z. B. "eigntlich", "vielleich"). Entfernt.
     }
 
     // --- Ersetzen ---
@@ -240,8 +271,30 @@ internal sealed class TrayApp : ApplicationContext
 
     private void OnCorrectionApplied(CorrectionResult result)
     {
+        _status.KorrekturAngewandt(DateTime.Now);
         _correctionCount++;
         _trayIcon.Text = $"Rechtschreib-Trainer — {_correctionCount} Korrekturen";
+    }
+
+    /// <summary>Ab so vielen Rücktasten-Ablehnungen wird ein Wort nie mehr korrigiert.</summary>
+    private const int RejectionThreshold = 2;
+
+    private void OnCorrectionRejectedByBackspace(CorrectionRecord rejection)
+    {
+        DebugLog.Write($"per Rücktaste abgelehnt: '{rejection.Before}' -> '{rejection.After}'");
+        try
+        {
+            var often = DictionaryDistiller.RejectedOften(LearnStore.ReadAll(AppPaths.CorrectionLog), RejectionThreshold);
+            if (often.Contains(rejection.Before, StringComparer.OrdinalIgnoreCase) && !_neverCorrect.Words.Contains(rejection.Before))
+            {
+                _neverCorrect.Add(rejection.Before);
+                Notify("Gelernt", $"„{rejection.Before}\" hast du {RejectionThreshold}× zurückgenommen — wird ab jetzt nicht mehr korrigiert.");
+            }
+        }
+        catch (IOException)
+        {
+            // Log gerade nicht lesbar - beim nächsten Mal zählt es mit.
+        }
     }
 
     private void OnCorrectionRejected(string word)
@@ -294,9 +347,14 @@ internal sealed class TrayApp : ApplicationContext
         _lastForeground = Win32.GetForegroundWindow();
     }
 
+    private void StatusSchreiben()
+        => StatusFileWriter.Write(AppPaths.StatusPath, _status.BuildJson(DateTime.Now));
+
     private void TogglePause()
     {
         _controller.Paused = !_controller.Paused;
+        _status.SetzePause(_controller.Paused);
+        StatusSchreiben();
 
         if (_controller.Paused)
         {
@@ -386,6 +444,7 @@ internal sealed class TrayApp : ApplicationContext
         Win32.UnregisterHotKey(_hotkeyForm.Handle, HotkeyRecord);
         Win32.UnregisterHotKey(_hotkeyForm.Handle, HotkeyPause);
         Win32.UnregisterHotKey(_hotkeyForm.Handle, HotkeyUndo);
+        _statusTimer.Stop();
         _trayIcon.Visible = false;
         _trayIcon.Dispose();
         _hotkeyForm.Close();

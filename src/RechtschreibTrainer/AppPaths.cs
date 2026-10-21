@@ -46,6 +46,12 @@ internal static class AppPaths
     /// <summary>Wörter, die klein bleiben, auch wenn es gleichlautende Substantive gibt.</summary>
     public static string KeepLowercaseFile => Path.Combine(AppContext.BaseDirectory, "data", "klein-schreiben.txt");
 
+    /// <summary>Korpus: wie oft ein Wort mitten im Satz groß/klein steht (Tatoeba, siehe data/HERKUNFT.md).</summary>
+    public static string CasingFile => Path.Combine(AppContext.BaseDirectory, "data", "schreibung.txt");
+
+    /// <summary>Wörter, die klein gültig sind und groß ein Substantiv ("testen"/"Testen").</summary>
+    public static string LowercaseValidFile => Path.Combine(AppContext.BaseDirectory, "data", "klein-gueltig.txt");
+
     /// <summary>Wörter, die nur mit vorangehendem Artikel großgeschrieben werden (siehe Determiners).</summary>
     public static string AmbiguousNounsFile => Path.Combine(AppContext.BaseDirectory, "mehrdeutige-substantive.txt");
 
@@ -54,6 +60,12 @@ internal static class AppPaths
 
     /// <summary>Eigene Namen des Nutzers, im Datenordner, editierbar.</summary>
     public static string UserNames => Path.Combine(DataDir, "eigene-namen.txt");
+
+    /// <summary>Status für den PC-Hub (nur Zähler und Zustand, nie getippter Text).</summary>
+    public static string StatusPath =>
+        Environment.GetEnvironmentVariable("RECHTSCHREIBTRAINER_STATUS") is { Length: > 0 } p
+            ? p
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "RechtschreibTrainer", "status.json");
 
     public static void EnsureDataDir() => Directory.CreateDirectory(DataDir);
 }

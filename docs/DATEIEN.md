@@ -14,19 +14,41 @@ Der ganze Ablauf in einem Durchgang:
    Tastatur (`WH_KEYBOARD_LL`) und meldet jeden Anschlag als Zeichen,
    Rücktaste, Enter oder Navigationstaste. Eigene, simulierte Anschläge
    erkennt der Hook an einem Marker und **ignoriert sie** — sonst würde sich
-   das Programm selbst zuhören.
+   das Programm selbst zuhören. Shift/AltGr/CapsLock liest er per
+   `GetAsyncKeyState` (seit Runde 3 — vorher kamen nie Großbuchstaben, `?`
+   oder `@` an). Tastenkürzel (Strg+…, Alt+…, Win+…), Steuerzeichen und
+   Tottasten melden einen **Kontextbruch** (`KeyInput`). Einzelne Anschläge
+   werden **nirgends** protokolliert, auch nicht im Debug-Log.
 
 2. **Wort zusammenbauen.** `WordWatcher` sammelt die Zeichen zum aktuellen
    Wort und merkt sich, ob gerade ein **Satzanfang** ist. Er verwirft das Wort,
    wenn der Zusammenhang verloren geht: Mausklick, Fokuswechsel, Pfeiltasten,
-   Pos1/Ende, längere Pause. Nach so einem Bruch ist unklar, wo der Cursor
-   steht — das nächste Wort könnte ein Bruchstück eines schon vorhandenen
-   Wortes sein. Deshalb wird es mit dem Vermerk `AllowSpellGuess = false`
-   gemeldet: exakte Wörterbuch-Treffer sind dann noch erlaubt, **Raten nicht**.
+   Pos1/Ende, Tastenkürzel. (Eine **Tipppause** bricht den Kontext seit Runde 3
+   nicht mehr — sie verhinderte, dass 12 % aller Wörter geraten wurden.) Nach
+   so einem Bruch ist unklar, wo der Cursor steht — das nächste Wort könnte
+   ein Bruchstück eines schon vorhandenen Wortes sein. Deshalb wird es mit
+   dem Vermerk `AllowSpellGuess = false` gemeldet: exakte Wörterbuch-Treffer
+   sind dann noch erlaubt, **Raten nicht**.
 
-3. **Wortgrenze erreicht.** Sobald ein Leerzeichen, Enter oder `. , ! ? ; :`
+   Außerdem setzt der `WordWatcher` diese Vermerke (Runde 3):
+   - **`DoNotTouch`** — ganzer Token (bis zum nächsten Leerraum) mit `@ / \ _
+     # = < > | ~ :` usw., Wörter mit Ziffern (`s24`), Abkürzungen (`bzw.`).
+     E-Mail-Adressen, URLs und Pfade werden so nie angefasst.
+   - **`IsSecret`** — die 3 Tokens nach einem Passwort-Auslösewort
+     (`SecretTriggers`: passwort, kennwort, pin, tan, login, zugangscode …):
+     nicht korrigieren, nicht protokollieren, nicht als Kontext merken.
+     Endet bei Enter; ein Satzzeichen *im* Passwort beendet ihn nicht.
+   - **Satzanfang** nur, wenn nach `. ! ?` wirklich Leerraum folgt, nicht nach
+     Abkürzungen (`Abbreviations`) und Ordinalzahlen (`am 19.`).
+   - **Substantiv-Beleg** (`PrecededByDeterminer`, historischer Name):
+     Artikel/Possessiv, Kontraktion (`am im zum beim …`), Zahl (`30 sekunden`)
+     oder Artikel + dekliniertes Adjektiv (`die ganze zeit`) davor.
+
+3. **Wortgrenze erreicht.** Sobald ein Leerzeichen, Enter oder `, ! ? ;`
    kommt, meldet der `WordWatcher` das fertige Wort samt Grenzzeichen und
-   Kontext.
+   Kontext. Bei `.` und `:` wartet er auf das nächste Zeichen (`gmx.de` oder
+   Satzende?) und meldet das Wort dann mit `TypedAfterBoundary`; kommt
+   600 ms nichts, meldet `TrayApp` es trotzdem.
 
 4. **Nachgetipptes mitzählen.** `TrayApp` legt das Wort zur Seite und
    korrigiert beim nächsten Timer-Takt (25 ms). Tippst du in der Zwischenzeit
@@ -59,30 +81,51 @@ Der ganze Ablauf in einem Durchgang:
       ist das ein echtes Raten (zwei Fehlerquellen kombiniert), läuft deshalb
       nur mit `AllowSpellGuess` und respektiert dieselbe „schon richtig"-Absicherung.
    6. Sonst **raten** lassen (`SpellCorrector`, nur wenn `AllowSpellGuess`).
-   7. Zuletzt unabhängig davon: Ist **Satzanfang** und das Wort klein? → groß
+   7. **Schlussprüfung:** Was geraten/per Regel erzeugt wurde, muss aus
+      bekannten Wörtern bestehen, sonst bleibt das Wort stehen.
+   8. Zuletzt unabhängig davon: Ist **Satzanfang** und das Wort klein? → groß
       schreiben.
+   Vorher: `DoNotTouch`/`IsSecret` → **Finger weg**, nichts wird geloggt.
 
 6. **Raten (nur wenn nötig).** `SpellCorrector` arbeitet gegen die große
    Wortliste und ist bewusst feige:
-   - Wörter unter 4 Zeichen werden gar nicht angefasst, unter 5 Zeichen wird
-     nicht geraten.
-   - Ist das Wort ein **Eigenname** (`GitHub`, `iPhone`, `Montag`), wird nur
-     die exakte Schreibweise erzwungen.
-   - Ist das Wort **bekannt**, passiert nichts — außer es ist ein klein
-     getipptes Substantiv, dann wird es großgeschrieben.
-   - Sonst werden Kandidaten mit **Damerau-Abstand 1** gebildet (ein
-     Buchstabe vergessen, zu viel, vertauscht oder falsch). Bei genau 5
-     Zeichen nur die harmlosen Varianten (vergessen/vertauscht), ab 6 Zeichen
-     alle.
-   - **Großschreibung bei mehrdeutigen Wörtern**: Für eine kleine, kuratierte
-     Liste bekannter Mehrdeutigkeiten (`mehrdeutige-substantive.txt` — z. B.
-     `fallen`/`Fallen`, `dusche`/`Dusche`, `gucken`/`Gucken`) wird nur dann
-     großgeschrieben, wenn direkt davor ein Artikel oder Possessivpronomen
-     stand (`Determiners.cs`, von `WordWatcher` als letztes fertiges Wort
-     mitverfolgt). Ohne diesen Beleg bleibt die häufigere, klein geschriebene
-     Lesart die sicherere Annahme. Bekannte Grenze: Steht zwischen Artikel und
-     Substantiv noch ein Adjektiv (`den großen Fluss`), hilft ein einzelnes
-     Vorwort nicht — das bräuchte echtes Parsen.
+   - Unter 3 Zeichen nichts. **3–4 Zeichen** (Runde 3): nur Doppelbuchstaben
+     (`einn`→`ein`), vertauschte oder vergessene Buchstaben, und nur zu einem
+     **sehr häufigen** Wort (≥ 5.000 im Korpus), das den Zweitplatzierten
+     **zehnfach** schlägt (`ihc`→`ich`, `mla`→`mal`, `ghet`→`geht`; `mch`
+     bleibt stehen, weil mach/mich gleich häufig sind). Bekannte 3-Zeichen-
+     Wörter nur, wenn sie bloß ein seltener Name sind.
+   - Ist das Wort ein **Eigenname** (`GitHub`, `iPhone`, `Montag`), wird die
+     exakte Schreibweise erzwungen — **außer** der Name ist klein ein
+     gewöhnliches Wort und im Korpus meist klein (`anders`, `lasse`).
+   - Ist das Wort **bekannt**: Ist es extrem selten (≤ 200) und ergibt ein
+     vertauschter/vergessener Buchstabe ein ≥ 500× häufigeres Wort, war es ein
+     **Echtwort-Fehler** (`genua`→`genau`, `mienen`→`meinen`; nur klein
+     getippt). Sonst wird höchstens großgeschrieben (siehe unten).
+   - Unbekannt, aber **gültig**: Bindestrich-Wort (`E-Mails`), abgetrenntes
+     Stück (`Fleisch-`), Genitiv eines Namens (`Lenas`), zerlegbares
+     **Kompositum** (`CompoundSplitter`: `Transportwege`, `Wartebereich`) →
+     nicht raten (höchstens großschreiben, wenn der Kopf ein Substantiv ist).
+     Ausnahme: ein häufiges Wort (≥ 20) ist nur einen Buchstaben entfernt
+     (`mittlerweilen`→`mittlerweile`).
+   - **Doppelbuchstaben** (`kannn`, `allles`, `kommmmt`) zuerst.
+   - Sonst Kandidaten mit **Damerau-Abstand 1**. Bei genau 5 Zeichen nur die
+     harmlosen Varianten (vergessen/vertauscht), ab 6 Zeichen alle. Ein
+     vergessener **erster** Buchstabe wird nie ergänzt (`anderern` wurde zu
+     `Wanderern`). Ist ein Kandidat einer fast gleich plausiblen Fehlerart
+     ≥ 1.000× häufiger, gewinnt er.
+   - Nichts mit Abstand 1: **fehlende Leertaste** (`FunctionWords`:
+     `damitich`→`damit ich`, `vorallem`→`vor allem`, `demspiel`→`dem Spiel`),
+     dann **zwei Fehler** ab 6 Zeichen, nur vertauscht/vergessen/zu viel und
+     nicht „zu viel + vergessen" (`vileicht`→`vielleicht`), eindeutig.
+   - **Großschreibung** (`WordList.IsCapitalisedOnly`, Runde 3): Der Korpus
+     `data/schreibung.txt` sagt, wie oft ein Wort **mitten im Satz** groß
+     steht. ≥ 90 % → groß; 20–90 % → nur mit Substantiv-Beleg; darunter →
+     nie (`ich würde`, `leider`, `alle drei`). Ohne Korpusbeleg: klein
+     gültige Wörter (`klein-gueltig.txt`) nur mit Beleg. Nach `zum`/`beim`/…
+     wird ein Infinitiv groß (`zum Testen`). `mehrdeutige-substantive.txt`
+     und `klein-schreiben.txt` verschärfen nur (Beleg nötig), erlauben nie
+     etwas gegen den Korpus.
    - Bewertung: Zuerst zählt die **Fehlerart** (vergessen/vertauscht gelten
      als wahrscheinlicher als danebengegriffen), erst danach die
      **Worthäufigkeit**. Ein „falscher Buchstabe" zählt dabei **nicht
@@ -112,6 +155,12 @@ Der ganze Ablauf in einem Durchgang:
    trägt das Wort in `nie-korrigieren.txt` ein — derselbe Fehlgriff kommt
    damit nie wieder.
 
+   **Rücktaste als Ablehnung (Runde 3):** Löschst du direkt nach einer
+   Korrektur mit der Rücktaste ins korrigierte Wort hinein (bevor das nächste
+   Wort fertig ist), landet ein `Rejected`-Eintrag in `korrekturen.jsonl`. Ab
+   **2** Ablehnungen desselben Worts → `nie-korrigieren.txt` (mit
+   Benachrichtigung). In den echten Daten wurde Strg+Alt+Z nie benutzt.
+
 10. **Lernen beim nächsten Programmstart.** `DictionaryLoader` liest beim
     Start `korrekturen.jsonl` und zählt, wie oft welches Wort gleich
     korrigiert wurde (`DictionaryDistiller`). Ab **3 gleichen Treffern**
@@ -121,9 +170,11 @@ Der ganze Ablauf in einem Durchgang:
     **Ausgeschlossen sind absichtlich:** Wörter, die schon im Wörterbuch oder
     auf der Nie-Liste stehen; Satzanfang-Großschreibungen (`ich→Ich` ist eine
     reine Positionsregel, kein feststehender Rechtschreibfehler — als fester
-    Eintrag würde „ich" plötzlich überall im Satz großgeschrieben); und die
-    mehrdeutigen Substantive aus `mehrdeutige-substantive.txt` (brauchen
-    weiterhin Satzkontext, dürfen nicht zur festen Regel werden).
+    Eintrag würde „ich" plötzlich überall im Satz großgeschrieben); seit
+    Runde 3 **jede reine Groß-/Kleinschreib-Korrektur** (so waren `würde=Würde`,
+    `weiß=Weiß`, `kriege=Kriege` fest eingebrannt worden — die Großschreibung
+    entscheidet live der Satzkontext); abgelehnte Paare; und die
+    mehrdeutigen Substantive aus `mehrdeutige-substantive.txt`.
 
 ---
 
@@ -156,12 +207,19 @@ Kein Windows, keine Dateizugriffe im Kern, alles unit-testbar.
 | `ReplacementTable.cs` | Feste Ersatzschreibungen nach Hunspell-`REP`-Vorbild: `ue→ü`, `oe→ö`, `ae→ä`, `ss→ß`. Liefert Kandidaten; `OfflineCorrector` prüft, ob einer davon ein bekanntes Wort ergibt — oder speist ihn zusätzlich ins Raten ein, wenn noch ein zweiter Fehler dazukommt. |
 | `KeyboardLayout.cs` | QWERTZ-Tastatur-Nachbarschaft (nach Aspell-`.kbd`-Vorbild, nur Nachbarn in derselben Reihe). Sagt `SpellCorrector`, ob ein falscher Buchstabe ein plausibler Danebengriff war. |
 | `LetterConfusions.cs` | Buchstabenpaare, die trotz fehlender Tastatur-Nachbarschaft oft verwechselt werden (bisher nur i/e). Wird wie ein Tastatur-Nachbar gewichtet (`WeightConfusable`). |
-| `Determiners.cs` | Artikel/Possessiv-/Demonstrativpronomen (der/die/das/ein/mein/…). Signalisiert, dass das nächste Wort vermutlich ein Substantiv ist. |
-| `SpellCorrector.cs` | Das Raten gegen die große Wortliste (Damerau-Abstand 1, Gewichte, Dominanz-Schwelle). `SpellSettings` hält die Stellschrauben. |
-| `WordList.cs` | Die geladenen Wortlisten im Speicher: kennt Wörter, Häufigkeiten, Substantive, Eigennamen und die „bleibt klein"-Ausnahmen. |
-| `LiveCorrectionController.cs` | Bindeglied: nimmt fertige Wörter, holt die Korrektur, stößt Ersetzung + Protokoll an, verwaltet Rückgängig. Kennt kein Windows — Ersetzen und Loggen sind Rückrufe. |
+| `Determiners.cs` | Artikel/Possessiv-/Demonstrativpronomen (der/die/das/ein/mein/…) und Kontraktionen (am/im/zum/beim/…). Signalisiert, dass das nächste Wort vermutlich ein Substantiv ist. |
+| `Abbreviations.cs` | Abkürzungen mit Punkt (`bzw ca usw ggf …`): danach kein Satzanfang, selbst nie korrigiert. |
+| `SecretTriggers.cs` | Passwort-Auslösewörter. Bewusst ohne „code" (der Nutzer schreibt oft „Claude Code"). |
+| `FunctionWords.cs` | Geschlossene Wortklassen für die fehlende Leertaste; Präpositionen getrennt (die sind übliche Kompositum-Anfänge). |
+| `CompoundSplitter.cs` | Zerlegt unbekannte Wörter in 2–3 bekannte Teile (je ≥ 4 Zeichen, Fugen s/es/n/en/e, Kopf kein Funktionswort) → Kompositum, nicht raten. |
+| `KeyInput.cs` | Entscheidet pro Tastendruck: Text, Kontextbruch (Kürzel, Steuerzeichen, Tottaste) oder ignorieren. Testbar ohne Windows. |
+| `SpellCorrector.cs` | Das Raten gegen die große Wortliste (Damerau-Abstand 1 und 2, Kurzwörter, Doppelbuchstaben, Echtwort-Fehler, fehlende Leertaste, Kompositum-Schutz, Gewichte, Dominanz). `SpellSettings` hält die Stellschrauben, die übrigen Schwellen sind Konstanten mit Kommentar. |
+| `WordList.cs` | Die geladenen Wortlisten im Speicher: kennt Wörter, Häufigkeiten, Substantive, Eigennamen, Korpus-Großschreibung (`schreibung.txt`), klein gültige Wörter und die „bleibt klein"-Ausnahmen. Entscheidet die Großschreibung (`IsCapitalisedOnly`) und ob ein Name gemeint ist (`ProperNounReading`). |
+| `LiveCorrectionController.cs` | Bindeglied: nimmt fertige Wörter, holt die Korrektur, stößt Ersetzung + Protokoll an, verwaltet Rückgängig und erkennt die Ablehnung per Rücktaste. Fasst `DoNotTouch`/`IsSecret`-Wörter nie an. Kennt kein Windows — Ersetzen und Loggen sind Rückrufe. |
 | `LearnStore.cs` | Hängt eine Korrektur als JSON-Zeile an `korrekturen.jsonl` an; liest sie beim Start auch wieder ein (`ReadAll`). |
-| `DictionaryDistiller.cs` | Zählt (vorher,nachher)-Paare aus dem Korrektur-Log; ab einem Schwellwert ein Vorschlag fürs Wörterbuch. Schließt Satzanfang-Großschreibung grundsätzlich aus (siehe Ablauf, Schritt 10). |
+| `StatusTracker.cs` | Zählt angewandte Korrekturen (heute/gesamt, Pause, Laufzeit) und baut die `status.json` für den PC-Hub. Enthält nur Zähler und Zustand, nie getippten Text. |
+| `StatusFileWriter.cs` | Schreibt die `status.json` atomar (Temp-Datei + Ersetzen), UTF-8 ohne BOM, wirft nie (best effort). |
+| `DictionaryDistiller.cs` | Zählt (vorher,nachher)-Paare aus dem Korrektur-Log; ab einem Schwellwert ein Vorschlag fürs Wörterbuch. Schließt jede reine Groß-/Kleinschreibung und abgelehnte Paare aus (siehe Ablauf, Schritt 10). `RejectedOften` liefert die per Rücktaste oft abgelehnten Wörter. |
 | `HotkeySpec.cs` | Wandelt Text wie `Strg+Alt+R` in Windows-Tastencodes. |
 
 ### `src/RechtschreibTrainer/` — das Windows-Programm
@@ -170,20 +228,20 @@ Kein Windows, keine Dateizugriffe im Kern, alles unit-testbar.
 |---|---|
 | `Program.cs` | Einstiegspunkt. Startet `TrayApp`, schreibt unbehandelte Fehler ins Debug-Log. |
 | `TrayApp.cs` | **Die Schaltzentrale.** Tray-Icon, Menü, Hotkeys, beide Hooks, die zwei Timer (Ersetz-Verzögerung 40 ms Takt, Fokusprüfung jede Sekunde), Pause und Mitschreib-Modus. |
-| `KeyboardHook.cs` | Systemweiter Tastatur-Hook. Meldet Zeichen, Rücktaste, Enter, Navigationstasten. Ignoriert eigene simulierte Eingaben per Marker. ⚠️ Wird von Windows Defender gern fälschlich als Virus gemeldet. |
+| `KeyboardHook.cs` | Systemweiter Tastatur-Hook. Meldet Zeichen, Rücktaste, Enter, Navigationstasten und Kontextbrüche (Kürzel). Liest Zusatztasten per `GetAsyncKeyState`, ruft `ToUnicode` mit Flag 4 (Tottasten unberührt). Ignoriert eigene simulierte Eingaben per Marker. Protokolliert keine Anschläge. ⚠️ Wird von Windows Defender gern fälschlich als Virus gemeldet. |
 | `MouseHook.cs` | Meldet Mausklicks, damit der Wort-Kontext verworfen wird. |
 | `Replacer.cs` | Führt die Ersetzung per `SendInput` aus (Rücktasten + Unicode-Text). |
 | `DictionaryLoader.cs` | Lädt die Wörterbücher in der Reihenfolge `haeufige-fehler.txt` → `klassische-fehler.txt` → `standard-vertipper.txt` → Benutzerdatei und die große Wortliste. Fehlen die Datendateien, läuft das Programm ohne Rechtschreibprüfung weiter. |
 | `HotkeySettings.cs` | Liest `tasten.txt`, legt sie beim ersten Start an. |
 | `NeverCorrectStore.cs` | Verwaltet `nie-korrigieren.txt`; neue Einträge wirken sofort. |
-| `AppPaths.cs` | **Alle Dateipfade an einem Ort.** Erste Anlaufstelle bei der Frage „wo liegt was?". |
+| `AppPaths.cs` | **Alle Dateipfade an einem Ort.** Erste Anlaufstelle bei der Frage „wo liegt was?". Enthält auch `StatusPath` (`%APPDATA%\RechtschreibTrainer\status.json`, Umgebungsvariable `RECHTSCHREIBTRAINER_STATUS` überschreibt) für den PC-Hub. |
 | `IconFactory.cs` | Zeichnet die Tray-Icons zur Laufzeit: grün = bereit, blau = korrigiert gerade, grau = pausiert, roter Punkt = Mitschreiben läuft. |
 | `DebugLog.cs` | Diagnose-Protokoll. **Nur aktiv, wenn `debug.log` oder `debug.on` im Datenordner liegt** — sonst wird nichts geschrieben. |
 | `HotkeyForm.cs` | Unsichtbares Fenster; empfängt Hotkey-Nachrichten und dient als Ziel, um Hook-Ereignisse auf den UI-Thread zu holen. |
 | `Win32.cs` | Die Windows-Funktionsaufrufe (`RegisterHotKey`, `GetForegroundWindow` …). |
 | `standard-vertipper.txt` | Mitgelieferte Vertipper-Liste (deine ersten Mitschnitte + häufige deutsche Dreher). |
 | `klassische-fehler.txt` | Mitgelieferte Liste klassischer Rechtschreibfehler (`seperat=separat`, `Standart=Standard` …). Nur eindeutige Fälle, nichts Kontextabhängiges. Von Hand gepflegt. |
-| `haeufige-fehler.txt` | **Automatisch erzeugt** von `scripts/fetch-fehlerlisten.ps1` aus der Wikipedia-„Liste von Tippfehlern" (CC BY-SA 4.0, siehe `data/HERKUNFT.md`). ~840 streng gefilterte `falsch=richtig`-Paare: `falsch` ist nachweislich kein echtes Wort, `richtig` ist belegt, keine reinen Groß-/Klein- oder ss/ß-Unterschiede. **Nicht von Hand pflegen** — beim nächsten Lauf überschrieben. |
+| `haeufige-fehler.txt` | **Automatisch erzeugt** von `scripts/fetch-fehlerlisten.ps1` aus der Wikipedia-„Liste von Tippfehlern" (CC BY-SA 4.0) und der LibreOffice-Autokorrektur Deutsch (MPL-2.0, siehe `data/HERKUNFT.md`). ~1.000 streng gefilterte `falsch=richtig`-Paare: `falsch` ist nachweislich kein echtes Wort, `richtig` ist belegt, keine reinen Groß-/Klein- oder ss/ß-Unterschiede. **Nicht von Hand pflegen** — beim nächsten Lauf überschrieben. |
 | `denglisch-verben.txt` | Eingedeutschte englische Tech-Verben (`coden`, `committen`, `pushen`, `mergen`, `deployen` …) als **bekannte Wörter** (keine Ersetzung) — verhindert, dass z. B. `codest` fälschlich zu `Codes` geraten wird. |
 | `mehrdeutige-substantive.txt` | Wörter, die oft etwas anderes sind (Verb/Adjektiv) und nur mit vorangehendem Artikel großgeschrieben werden (`fallen`, `dusche`, `gucken`, `aktiv`, `drei` …). |
 
@@ -191,7 +249,7 @@ Kein Windows, keine Dateizugriffe im Kern, alles unit-testbar.
 
 | Ordner | Inhalt |
 |---|---|
-| `RechtschreibTrainer.Core.Tests/` | Unit-Tests der reinen Logik plus Qualitäts-Benchmarks gegen die **echten** Wortlisten: `BenchmarkTests.cs` (206 isolierte, aus den echten Logs beschriftete Einzelwörter — Präzision/Trefferquote/Fehlalarme) und `PassageBenchmarkTests.cs` (238-Wörter-Fließtext) laufen als **Ratsche**. Dazu zwei Prüfungen für die Auto-Fehlerliste: `HaeufigeFehlerListeTests.cs` (kein Schlüssel ist in Wahrheit ein echtes Wort, jeder Eintrag greift im Betrieb wie erwartet, keine Überschneidung mit den Handlisten) und `GaengigeTippfehlerBenchmarkTests.cs` (misst an `gaengige-tippfehler-holdout.tsv` — 76 bewusst *nicht* ausgelieferten Tippfehlern — wie viel die restliche Kette von allein fängt; **keine Ratsche**, nur Analyse + grober Einbruchschutz). |
+| `RechtschreibTrainer.Core.Tests/` | Unit-Tests der reinen Logik plus Qualitäts-Benchmarks gegen die **echten** Wortlisten: **`AlltagBenchmarkTests.cs`** (seit Runde 3, 250 Fälle **mit Satzkontext** in `alltag-faelle.tsv`, nach den Mustern der echten Tippdaten mit neutralen Sätzen nachgebaut; läuft durch `WordWatcher` + `LiveCorrectionController` auf einen nachgebauten Bildschirm; Ratsche — die wichtigste Messlatte), `BenchmarkTests.cs` (206 isolierte, aus den echten Logs beschriftete Einzelwörter — Präzision/Trefferquote/Fehlalarme) und `PassageBenchmarkTests.cs` (238-Wörter-Fließtext) laufen als **Ratsche**. Dazu zwei Prüfungen für die Auto-Fehlerliste: `HaeufigeFehlerListeTests.cs` (kein Schlüssel ist in Wahrheit ein echtes Wort, jeder Eintrag greift im Betrieb wie erwartet, keine Überschneidung mit den Handlisten) und `GaengigeTippfehlerBenchmarkTests.cs` (misst an `gaengige-tippfehler-holdout.tsv` — 76 bewusst *nicht* ausgelieferten Tippfehlern — wie viel die restliche Kette von allein fängt; **keine Ratsche**, nur Analyse + grober Einbruchschutz). |
 | `RechtschreibTrainer.Tests/` | 4 Tests der Windows-nahen Teile (Icon, Replacer-Struktur). |
 
 ---
@@ -202,16 +260,19 @@ Kein Windows, keine Dateizugriffe im Kern, alles unit-testbar.
 
 | Datei | Inhalt | Größe |
 |---|---|---|
-| `data/woerter.txt` | deutsche Wortformen | 881.698 Zeilen, 11 MB |
+| `data/woerter.txt` | deutsche Wortformen | ~788.000 Zeilen, 11 MB |
 | `data/haeufigkeit.txt` | Wort + Häufigkeit | 200.000 Zeilen, 2,6 MB |
 | `data/substantive.txt` | großgeschriebene Substantivformen | 258.182 Zeilen, 3,3 MB |
 | `data/namen.txt` | Eigennamen in exakter Schreibweise | 23.571 Zeilen |
 | `data/klein-schreiben.txt` | Wörter, die klein bleiben müssen | ~1.500 Zeilen |
+| `data/schreibung.txt` | `wort gross klein` — mitten im Satz groß/klein im Tatoeba-Korpus | 44.058 Zeilen |
+| `data/klein-gueltig.txt` | klein gültig und groß ein Substantiv/Name (`testen`, `anders`) | 7.904 Zeilen |
 
 ⚠️ **Diese Dateien liegen NICHT in Git** (`.gitignore` schließt `data/` aus).
 Nach einem frischen `git clone` fehlen sie, und das Programm läuft dann ohne
-Rechtschreibprüfung. Neu erzeugen: die `curl`-Befehle in **`data/HERKUNFT.md`**
-(dort stehen auch Quellen und Lizenzen aller Listen).
+Rechtschreibprüfung. Neu erzeugen: **`python scripts/erzeuge-wortdaten.py`**
+für `woerter.txt`, `schreibung.txt`, `klein-gueltig.txt`; die übrigen per
+`curl` laut **`data/HERKUNFT.md`** (dort stehen auch Quellen und Lizenzen).
 
 ### Deine Daten (`Dokumente\RechtschreibTrainer\`)
 
@@ -221,9 +282,9 @@ Rechtschreibprüfung. Neu erzeugen: die `curl`-Befehle in **`data/HERKUNFT.md`**
 | `nie-korrigieren.txt` | Wörter, die nie angefasst werden | wächst bei jedem Rückgängig |
 | `eigene-namen.txt` | deine Eigennamen in exakter Schreibweise | du |
 | `tasten.txt` | Tastenbelegung | beim ersten Start angelegt |
-| `korrekturen.jsonl` | jede Korrektur als `vorher → nachher → Quelle` | das Programm |
+| `korrekturen.jsonl` | jede Korrektur als `vorher → nachher → Quelle`, dazu `Rejected`-Einträge für Ablehnungen per Rücktaste | das Programm |
 | `keystrokes.log` | mitgeschriebener Text — **nur im Mitschreib-Modus** | das Programm |
-| `debug.log` | Diagnose — nur wenn die Datei existiert | das Programm |
+| `debug.log` | Diagnose — nur wenn `debug.log` oder `debug.on` existiert. Seit Runde 3 nur noch fertige Wörter (nie technische/geheime), keine einzelnen Anschläge. **Standard: aus** (Nutzerwunsch 2026-10-21). | das Programm |
 
 **Datenschutz:** Nichts davon verlässt je den Rechner; das Programm hat keinen
 Netzzugriff. Der Mitschreib-Modus ist ausdrücklich opt-in und protokolliert
@@ -285,9 +346,11 @@ irgendwas debuggst.**
    Endlosschleifen aus.
 
 5. **Zusammengesetzte Wörter sind in keiner Wortliste.** `Kältekreislauf`,
-   `Nutzungslimit` — Deutsch bildet beliebig viele davon. Sie sehen für das
-   Programm wie Tippfehler aus. Solange nur Abstand 1 geraten wird, passiert
-   meist nichts; **bei Abstand 2 wäre das gefährlich** (siehe Plan, Phase 2b).
+   `Nutzungslimit` — Deutsch bildet beliebig viele davon. Seit Runde 3 schützt
+   `CompoundSplitter` sie vor dem Raten; das war die Voraussetzung, um Abstand 2
+   überhaupt zu erlauben. Der Schutz ist bewusst zu großzügig und gibt deshalb
+   nach, wenn ein **häufiges** Wort nur einen Buchstaben entfernt ist — sonst
+   galten `russ|sich` und `mittler|weilen` als „Kompositum".
 
 6. **Nach einem Cursor-Sprung wird nicht geraten.** `AllowSpellGuess = false`
    ist Absicht, kein Fehler: Der Cursor könnte mitten in einem bestehenden
@@ -297,7 +360,10 @@ irgendwas debuggst.**
    `data/woerter.txt` in den übergeordneten Ordnern. Fehlen die Dateien,
    scheitert dieser Test — nicht der Code ist kaputt, die Daten fehlen.
 
-8. **Die Großschreibungs-Ausnahmeliste konvergiert nicht.** Jeder größere,
+8. **(Gelöst in Runde 3 durch `data/schreibung.txt`.)** Der fehlende Baustein
+   war ein Korpus, in dem die Groß-/Kleinschreibung erhalten ist, gezählt nur
+   **mitten im Satz** (Tatoeba): „trug" steht dort fast nur klein, „Montag"
+   fast nur groß. Ursprünglicher Befund zum Nachlesen: Jeder größere,
    vielfältigere Text (siehe `GrosserTextBenchmarkTests.cs`, 2026-09-06)
    findet neue Wörter, deren Großform zufällig in der 258k-Substantivliste
    steht, obwohl klein gemeint (Zahlwörter, Adjektive, Verb-Präteritumformen:
@@ -316,6 +382,26 @@ irgendwas debuggst.**
    `WordWatcher.cs`), aber die Erkennung bleibt ein einfacher
    Zeichen-Check, kein echtes Satzverständnis — weitere Sonderfälle
    (Doppelpunkt vor Zitat, verschachtelte Anführungszeichen) sind denkbar.
+
+10. **`GetKeyboardState` taugt im Low-Level-Hook nicht** (behoben 2026-10-21).
+    Es liefert den Tastenzustand des *eigenen* Threads, also immer „keine
+    Zusatztaste". Folge: 0 Großbuchstaben und 0 Fragezeichen in 49.585 echten
+    Anschlägen, aus `@` wurde `q` — und beim Neutippen eines Worts wurde z. B.
+    die E-Mail-Adresse des Nutzers zu `Kunauqgmx.` zerstört. Zusatztasten
+    immer per `GetAsyncKeyState` lesen.
+
+11. **Die LibreOffice-Wortliste ist ISO-8859-1 und hat Kennzeichen.**
+    `de_DE_frami.dic` muss als Latin-1 gelesen werden (sonst 57.371 kaputte
+    Zeilen), und die Kennzeichen zählen: `d` = **verbotene Fehlschreibung**
+    (`Wiederspruch`, `Rückgrad` — galten bis Runde 3 als richtig!), `o` = nur
+    in Zusammensetzungen (`auto`, `laptop` klein), `h` = nur mit Endung.
+    `scripts/erzeuge-wortdaten.py` macht das richtig — nie wieder per
+    `cut -d/ -f1` importieren.
+
+12. **Dateien nie mit PowerShell `Get-Content`/`Set-Content` umschreiben.**
+    PowerShell 5.1 liest UTF-8 ohne BOM als ANSI und schreibt es doppelt
+    kodiert zurück — alle Umlaute kaputt (2026-10-21 einmal passiert und
+    repariert). Edit-Werkzeug oder Python benutzen.
 
 ---
 

@@ -1,0 +1,291 @@
+# Alltags-Benchmark MIT Satzkontext (Qualitaetsrunde 3, 2026-10-21).
+#
+# Format:  kontext <TAB> getippt <TAB> erwartet <TAB> kategorie
+#   kontext   Text, der davor getippt wurde (darf leer sein; ein Leerzeichen
+#             wird automatisch angehaengt). Laeuft durch den echten WordWatcher.
+#   getippt   die zu bewertende Zeichenfolge (ein Wort, oder ein technischer
+#             Token wie eine E-Mail-Adresse); danach wird ein Leerzeichen getippt.
+#   erwartet  Ergebnis nach der Korrektur; "-" = darf NICHT angefasst werden.
+#             Mehrere erlaubte Ergebnisse mit "|" getrennt.
+#
+# Herkunft: nachgebaut aus den MUSTERN der echten Tippdaten des Nutzers
+# (Auswertung von debug.log, 8.318 Woerter, 2026-09-03 bis 2026-10-21) -
+# aber mit neutralen Saetzen. KEINE Originalsaetze, Namen, Adressen oder
+# privaten Inhalte (oeffentliches Repo).
+#
+# Kategorien:
+#   klein       klein getippt, muss klein bleiben (Verb/Adjektiv/Adverb, das
+#               es auch als seltenes Substantiv gibt)
+#   gross       klein getipptes Substantiv -> muss gross werden
+#   name        Eigenname -> exakte Schreibweise
+#   tippfehler  echter Vertipper -> muss korrigiert werden
+#   korrekt     richtig getippt -> darf nicht angefasst werden
+#   technisch   E-Mail/URL/Pfad/Code -> darf nie angefasst werden
+#   satz        Satzanfang-Grossschreibung (oder ausdruecklich keine)
+#   geheim      nach einem Passwort-Ausloesewort -> nicht ansehen
+
+# ------------------------------------------------------------------ klein
+ich	würde	-	klein
+das	würde	-	klein
+ich	weiß	-	klein
+das	weiß	-	klein
+er	weiß	-	klein
+kannst du mir eine email	senden	-	klein
+ich will das	senden	-	klein
+das läuft nur	lokal	-	klein
+erst mal	lokal	-	klein
+das ist	leider	-	klein
+ich habe	leider	-	klein
+ich bin	gerade	-	klein
+das geht	gerade	-	klein
+das passt	perfekt	-	klein
+das ist	perfekt	-	klein
+ich will das jetzt	testen	-	klein
+kannst du das	testen	-	klein
+ich muss das	speichern	-	klein
+du kannst das	starten	-	klein
+du musst das	drücken	-	klein
+noch ein	paar	-	klein
+ein	paar	-	klein
+alle	drei	-	klein
+die	drei	-	klein
+wie	kriege	-	klein
+ich	kriege	-	klein
+das ist ganz	normal	-	klein
+ich bin	frei	-	klein
+ich	rede	-	klein
+ich	spreche	-	klein
+ich	warte	-	klein
+ich	brauch	-	klein
+ich	glaube	-	klein
+sie	leben	-	klein
+wir	essen	-	klein
+das ist	schade	-	klein
+ich bin	ehrlich	-	klein
+das ist	anders	-	klein
+ich	lasse	-	klein
+ich	starte	-	klein
+wir	teilen	-	klein
+er hat	gebeten	-	klein
+wir	fallen	-	klein
+das ist	wichtig	-	klein
+das ist	richtig	-	klein
+das ist	einfach	-	klein
+ich mache das	gleich	-	klein
+das	stimmt	-	klein
+er	sucht	-	klein
+das ist	klar	-	klein
+das ist	echt	-	klein
+
+# ------------------------------------------------------------------ gross
+ich will ein	spiel	Spiel	gross
+im	spiel	Spiel	gross
+am	ende	Ende	gross
+bis zum	ende	Ende	gross
+das brauche ich zum	testen	Testen	gross
+die ganze	zeit	Zeit	gross
+ich habe keine	zeit	Zeit	gross
+das dauert	30	-	korrekt
+etwa 30	sekunden	Sekunden	gross
+nach 10	minuten	Minuten	gross
+noch ein paar weitere	dinge	Dinge	gross
+jetzt andere	dinge	Dinge	gross
+geht auch über	kabel	Kabel	gross
+schreib den	text	Text	gross
+ich brauche ein	auto	Auto	gross
+auf meinem	laptop	Laptop	gross
+ich brauche	geld	Geld	gross
+wo ist das	handy	Handy	gross
+leg das in den	ordner	Ordner	gross
+das steht in der	datei	Datei	gross
+schick mir die	daten	Daten	gross
+meine	eltern	Eltern	gross
+das hat der	vater	Vater	gross
+ich habe einen	plan	Plan	gross
+das ist der	plan	Plan	gross
+gib mir das	passwort	Passwort	gross
+dann mit neuen	regeln	Regeln	gross
+das sind die	fehler	Fehler	gross
+das	design	Design	gross
+ein großes	haus	Haus	gross
+das	essen	Essen	gross
+das ist das	leben	Leben	gross
+ein schönes	lokal	Lokal	gross
+ich mache einen	test	Test	gross
+das ist ein	problem	Problem	gross
+schick mir den	link	Link	gross
+das ist eine gute	idee	Idee	gross
+mach ein	video	Video	gross
+der	akku	Akku	gross
+im	browser	Browser	gross
+öffne die	karte	Karte	gross
+mach ein	foto	Foto	gross
+in der	nacht	Nacht	gross
+am	abend	Abend	gross
+in dieser	woche	Woche	gross
+das ist eine	frage	Frage	gross
+die	leistung	Leistung	gross
+ich habe einen	termin	Termin	gross
+der neue	monitor	Monitor	gross
+frag den	admin	Admin	gross
+eine neue	session	Session	gross
+ein	scooter	Scooter	gross
+hier ist die	email	Email|E-Mail	gross
+der	flow	Flow	gross
+der	computer	Computer	gross
+am	montag	Montag	gross
+im	ordner	Ordner	gross
+die	videos	Videos	gross
+
+# ------------------------------------------------------------------ name
+alles auf	github	GitHub	name
+ich habe ein	iphone	iPhone	name
+schau bei	claude	Claude	name
+öffne	chrome	Chrome	name
+auf meinem	windows	Windows	name
+auf	kleinanzeigen	-|Kleinanzeigen	name
+
+# ------------------------------------------------------------------ tippfehler
+das will	ihc	ich	tippfehler
+ich	wil	will	tippfehler
+schau noch	mla	mal	tippfehler
+das	ghet	geht	tippfehler
+das	kan	kann	tippfehler
+ich	noh	noch	tippfehler
+das ist	mien	mein	tippfehler
+ich	gukc	guck	tippfehler
+das ist	einn	ein	tippfehler
+du	uund	und	tippfehler
+ich	auh	auch	tippfehler
+das ist	niht	nicht	tippfehler
+das ist	noc	noch	tippfehler
+das geht nur	wennn	wenn	tippfehler
+ich	kannn	kann	tippfehler
+das ist	allles	alles	tippfehler
+das	kommmmt	kommt	tippfehler
+die	zeiit	Zeit	tippfehler
+das ist	eigntlich	eigentlich	tippfehler
+das ist	vielleich	vielleicht	tippfehler
+das geht	irgenwie	irgendwie	tippfehler
+das brauche ich	vorallem	vor allem	tippfehler
+ich mache das	damitich	damit ich	tippfehler
+ja	genua	genau	tippfehler
+mit	mienen	meinen	tippfehler
+das sind	mehrer	mehrere	tippfehler
+ich	gaube	glaube	tippfehler
+das	funktoniert	funktioniert	tippfehler
+wir	habne	haben	tippfehler
+die	anderern	anderen	tippfehler
+das	porjekt	Projekt	tippfehler
+das	sytsme	System	tippfehler
+ich	nocg	noch	tippfehler
+das ist	jetz	jetzt	tippfehler
+ich mache das	erstmla	erstmal|erst mal	tippfehler
+das	funktioeirt	funktioniert	tippfehler
+ich	weis	weiß	tippfehler
+das ist	vileicht	vielleicht	tippfehler
+ich	bruache	brauche	tippfehler
+das ist	wichtg	wichtig	tippfehler
+kannst du	nochmla	nochmal	tippfehler
+das ist	eigenlich	eigentlich	tippfehler
+ich habe	gerde	gerade	tippfehler
+ich	glaueb	glaube	tippfehler
+das ist	richitg	richtig	tippfehler
+ich	muusst	musst|muss	tippfehler
+wir	sidn	sind	tippfehler
+ich	ahbe	habe	tippfehler
+das	mahc	mach	tippfehler
+dann	amch	mach	tippfehler
+die	zusammenfassun	Zusammenfassung	tippfehler
+
+# ------------------------------------------------------------------ korrekt
+das ist	gut	-	korrekt
+ich	bin	-	korrekt
+wir	sind	-	korrekt
+das ist	okay	-	korrekt
+das	ist	-	korrekt
+ich	mache	-	korrekt
+ich	habe	-	korrekt
+das	geht	-	korrekt
+ja	genau	-	korrekt
+das	will	-	korrekt
+ich	kann	-	korrekt
+das ist	mein	-	korrekt
+mit	meinen	-	korrekt
+das ist	nicht	-	korrekt
+ich	noch	-	korrekt
+das sind	mehrere	-	korrekt
+hier ist	alles	-	korrekt
+die	anderen	-	korrekt
+schau mal	nach	-	korrekt
+das ist	nur	-	korrekt
+das ist	so	-	korrekt
+wir	haben	-	korrekt
+das ist	eine	-	korrekt
+das	war	-	korrekt
+ich	hab	-	korrekt
+das	mal	-	korrekt
+das ist	oder	-	korrekt
+ich	muss	-	korrekt
+da	ist	-	korrekt
+das ist	ein	-	korrekt
+er	kam	-	korrekt
+ich	mag	-	korrekt
+wo	ist	-	korrekt
+ich bin	da	-	korrekt
+das ist	wie	-	korrekt
+das	hat	-	korrekt
+das	tut	-	korrekt
+ich	tue	-	korrekt
+ich	sah	-	korrekt
+ich	lag	-	korrekt
+das	gab	-	korrekt
+wir	tun	-	korrekt
+ihr	seid	-	korrekt
+die	idee	Idee	gross
+ich	esse	-	korrekt
+ich	gehe	-	korrekt
+das	nutzungslimit	-|Nutzungslimit	korrekt
+die	bildschirmzeit	-|Bildschirmzeit	korrekt
+der	speicherort	-|Speicherort	korrekt
+eine	boxspringmatratze	-|Boxspringmatratze	korrekt
+das	stiftgefühl	-|Stiftgefühl	korrekt
+der	sparmodus	-|Sparmodus	korrekt
+die	sprachnachricht	-|Sprachnachricht	korrekt
+das	coden	-	korrekt
+ich	pushe	-	korrekt
+lass uns das	mergen	-	korrekt
+
+# ------------------------------------------------------------------ technisch
+schreib an	test@beispiel.de	-	technisch
+meine adresse ist	max.muster@gmx.de	-	technisch
+geh auf	www.beispiel.de	-	technisch
+öffne	https://beispiel.de/seite	-	technisch
+der pfad ist	c:\users\test\datei	-	technisch
+die variable	user_name	-	technisch
+ein	#hashtag	-	technisch
+das galaxy	s24	-	technisch
+das ist	x2	-	technisch
+die datei	index.html	-	technisch
+das paket	ihc_test	-	technisch
+die adresse	ihc@test.de	-	technisch
+
+# ------------------------------------------------------------------ satz
+das ist gut.	und	Und	satz
+das ist gut?	ja	Ja	satz
+das ist gut!	dann	Dann	satz
+das kostet ca.	zehn	-	satz
+siehe bzw.	die	-	satz
+das ist z.B.	ein	-	satz
+das war usw.	und	-	satz
+das kommt am 19.	oder	-	satz
+das ist ggf.	besser	-	satz
+das ist evtl.	gut	-	satz
+
+# ------------------------------------------------------------------ geheim
+das passwort ist	ihc	-	geheim
+mein passwort	nocg	-	geheim
+kennwort	jetz	-	geheim
+die pin ist	wil	-	geheim
+password	ghet	-	geheim
+das passwort lautet	porjekt	-	geheim

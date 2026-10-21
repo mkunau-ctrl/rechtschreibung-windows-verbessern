@@ -267,7 +267,12 @@ public class PassageBenchmarkTests
         // dem eigentlichen Substantiv ("den großen Bäumen") - das
         // unterscheidet ein einzelnes Vorwort nicht von echter Nominalisierung
         // ("die Großen"). Bräuchte echtes Parsen, nicht mehr nur ein Vorwort.
-        const double standGesamtquote = 0.966; // exakt 230/238 = 0,96638...
+        //
+        // 2026-10-21, Qualitaetsrunde 3: Gesamtquote 98,3 % (234 von 238),
+        // Kontrollwoerter 171/171 unangetastet. Die alte Grenze ("großen",
+        // "dichten" hinter einem Artikel) loest jetzt der Korpus
+        // (data/schreibung.txt): beide stehen mitten im Satz fast nur klein.
+        const double standGesamtquote = 0.983; // exakt 234/238 = 0,98319...
         Assert.True(quote >= standGesamtquote,
             $"RUECKSCHRITT: Gesamtquote {quote:P1} unter dem erreichten Stand {standGesamtquote:P1}");
     }

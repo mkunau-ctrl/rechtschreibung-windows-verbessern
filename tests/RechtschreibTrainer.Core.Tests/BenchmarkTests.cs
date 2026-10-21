@@ -178,8 +178,13 @@ public class BenchmarkTests
     //   Log-Faelle (die stammen aus echtem Tippverhalten, nicht aus klassischen
     //   Woerterbuch-Tippfehlern). Trefferquote auf UNGESEHENEN Tippfehlern
     //   siehe GaengigeTippfehlerBenchmarkTests (keine Ratsche).
+    // 2026-10-21, Qualitaetsrunde 3 (Kurzwoerter, Doppelbuchstaben, zwei
+    //   Fehler in laengeren Woertern, Korpus-Grossschreibung):
+    //   Praezision 100,0 % | Trefferquote 94,7 % | Fehlalarme 0,0 %
+    //   ("stick" -> "Stick" geht ohne Satzkontext bewusst nicht mehr - "stick"
+    //   ist klein gueltig; mit "einen stick" klappt es, siehe Alltags-Benchmark.)
     private const double StandPraezision = 1.0;
-    private const double StandTrefferquote = 0.903; // exakt 103/114 = 0,90350...
+    private const double StandTrefferquote = 0.947; // exakt 108/114 = 0,94736...
     private const double StandFehlalarme = 0.0;
 
     // ---- Das Ziel aus dem Plan (erreicht am 2026-09-05, Phase 3). ----

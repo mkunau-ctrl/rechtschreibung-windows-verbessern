@@ -173,4 +173,69 @@ public class LiveCorrectionControllerTests
         Assert.Equal(4, cmd.DeleteCount);
         Assert.Equal("ich ", cmd.Insert);
     }
+
+    // ---- Runde 3: Ruecktaste direkt nach einer Korrektur = Ablehnung ----
+
+    [Fact]
+    public void RuecktasteInsKorrigierteWortHineinIstEineAblehnung()
+    {
+        var c = Build(out _, out var learned, "cih=ich");
+        var abgelehnt = new List<CorrectionRecord>();
+        c.CorrectionRejectedByUser += abgelehnt.Add;
+
+        c.HandleWord(Word("cih"));   // Bildschirm: "ich "
+        c.OnBackspace();             // Leerzeichen weg - noch keine Ablehnung
+        Assert.Empty(abgelehnt);
+        c.OnBackspace();             // jetzt im korrigierten Wort
+
+        var r = Assert.Single(abgelehnt);
+        Assert.Equal("cih", r.Before);
+        Assert.Contains(learned, x => x.Source == CorrectionSource.Rejected && x.Before == "cih");
+    }
+
+    [Fact]
+    public void NachgetippteZeichenZaehlenMit()
+    {
+        var c = Build(out _, out _, "cih=ich");
+        var abgelehnt = new List<CorrectionRecord>();
+        c.CorrectionRejectedByUser += abgelehnt.Add;
+
+        c.HandleWord(Word("cih"));   // "ich "
+        c.OnCharTyped();             // "ich x"
+        c.OnBackspace();
+        c.OnBackspace();             // wieder "ich" - Leerzeichen geloescht
+        Assert.Empty(abgelehnt);
+        c.OnBackspace();
+
+        Assert.Single(abgelehnt);
+    }
+
+    [Fact]
+    public void NachDemNaechstenWortGiltDieRuecktasteNichtMehrAlsAblehnung()
+    {
+        var c = Build(out _, out _, "cih=ich");
+        var abgelehnt = new List<CorrectionRecord>();
+        c.CorrectionRejectedByUser += abgelehnt.Add;
+
+        c.HandleWord(Word("cih"));
+        c.HandleWord(Word("habe"));  // weitergetippt - Korrektur angenommen
+        for (var i = 0; i < 10; i++) c.OnBackspace();
+
+        Assert.Empty(abgelehnt);
+    }
+
+    [Fact]
+    public void KontextbruchBeendetDieBeobachtung()
+    {
+        var c = Build(out _, out _, "cih=ich");
+        var abgelehnt = new List<CorrectionRecord>();
+        c.CorrectionRejectedByUser += abgelehnt.Add;
+
+        c.HandleWord(Word("cih"));
+        c.ForgetLastCorrection();    // z. B. Mausklick
+        c.OnBackspace();
+        c.OnBackspace();
+
+        Assert.Empty(abgelehnt);
+    }
 }
