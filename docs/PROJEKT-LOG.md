@@ -87,9 +87,23 @@ Tastenlog aus.
 | Holdout ungesehene Tippfehler | 60/76 | **62/76** |
 | Tests | 209 | **332** |
 
-**Stand danach:** alles grün, gemergt nach `main`, gepusht, per
-`scripts/install.ps1` installiert (siehe unten im Abschnitt). Benutzerdaten
-bereinigt, `debug.on`/`debug.log` gelöscht.
+**Nachtrag bei der Installation:** Beim ersten Start lernte die neue Version
+aus dem *alten* Log wieder `anderern=Wanderern` und `talkme=Talke` — das Log
+enthält Korrekturen der alten, fehlerhaften Logik. Seitdem lernt
+`DictionaryLoader` nur Paare, die der heutige Korrektor genauso entscheidet
+(`Distill(stillValid:)`); ohne Wortliste wird gar nicht gelernt. `TalkMe` in
+`eigene-namen.txt`. Danach gelernt (alles echte Vertipper): erstmla, irgenwie,
+nciht, weiss, meinme, auc, richtgi, eigentlihc, gukcst, optimeirt.
+Außerdem drei Funde des automatischen Sicherheits-Reviews behoben: Passwort-
+Kontext gilt für den ganzen Token (ein `!` im Passwort beendet ihn nicht),
+Debug-Log schreibt bei Ersetzungen und geheimen Wörtern keinen Text mehr,
+vertippte Auslösewörter (`pasword`) lösen den Schutz trotzdem aus.
+
+**Stand danach:** 337 Tests grün, gemergt nach `main` (`98cf274`), gepusht,
+per `scripts/install.ps1` installiert und läuft (Autostart). Benutzerdaten
+bereinigt (Sicherung `woerterbuch.sicherung-2026-10-22.txt`),
+`debug.on`/`debug.log` gelöscht, die lokalen Auswertungsdateien mit Tipptext
+ebenfalls. Python 3.12 ist auf dem Rechner installiert (für das Datenskript).
 
 **Offene Punkte / Nächste Schritte:**
 - **Handtest durch den Nutzer**: Großbuchstaben/`?`/`@` tippen (kommen jetzt
