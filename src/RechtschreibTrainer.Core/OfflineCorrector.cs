@@ -45,6 +45,11 @@ public enum CorrectionSource
     /// <summary>Feste Ersatzschreibung aufgelöst (ue→ü, oe→ö, ae→ä, ss→ß).</summary>
     Replacement,
     Capitalization,
+    /// <summary>
+    /// Kein Korrektur-, sondern ein Ablehnungs-Eintrag im Lern-Log: Der Nutzer
+    /// hat direkt nach dieser Korrektur per Rücktaste ins Wort hineingelöscht.
+    /// </summary>
+    Rejected,
 }
 
 /// <summary>Ergebnis eines Korrektur-Durchgangs für ein Wort.</summary>

@@ -60,6 +60,7 @@ internal sealed class TrayApp : ApplicationContext
             record => LearnStore.Append(AppPaths.CorrectionLog, record));
         _controller.CorrectionApplied += OnCorrectionApplied;
         _controller.CorrectionRejected += OnCorrectionRejected;
+        _controller.CorrectionRejectedByUser += OnCorrectionRejectedByBackspace;
         int heute = 0, gesamt = 0;
         try { (heute, gesamt) = StatusTracker.Zaehle(LearnStore.ReadAll(AppPaths.CorrectionLog), DateTime.Now); }
         catch { /* ohne Vorwerte starten */ }
@@ -96,9 +97,10 @@ internal sealed class TrayApp : ApplicationContext
         _mouse.ClickDetected += () => Post(DropContext);
         _watcher.WordCompleted += w =>
         {
-            // Technische und geheime Wörter erscheinen nie im Debug-Log.
-            var shown = w.Context.DoNotTouch ? "(nicht angefasst)" : $"'{w.Word}'";
-            DebugLog.Write($"WordCompleted {shown} boundary={(w.Boundary == '\n' ? "\\n" : w.Boundary.ToString())} satzanfang={w.Context.IsSentenceStart}");
+            // Technische und geheime Wörter erscheinen nie im Debug-Log -
+            // auch nicht ihr Grenzzeichen (könnte Teil eines Passworts sein).
+            if (!w.Context.DoNotTouch)
+                DebugLog.Write($"WordCompleted '{w.Word}' boundary={(w.Boundary == '\n' ? "\\n" : w.Boundary.ToString())} satzanfang={w.Context.IsSentenceStart}");
             _pendingWord = w;
             _typedSinceWord.Clear();
         };
@@ -163,6 +165,8 @@ internal sealed class TrayApp : ApplicationContext
         // inzwischen auf dem Bildschirm hinter dem Wort steht.
         if (_pendingWord is not null)
             _typedSinceWord.Append(c);
+        else
+            _controller.OnCharTyped();
 
         _watcher.OnChar(c);
         if (_recording.IsActive) _recording.AppendChar(c);
@@ -173,6 +177,7 @@ internal sealed class TrayApp : ApplicationContext
         _lastActivity = DateTime.Now;
         // Der Nutzer bessert selbst nach — nichts mehr automatisch ersetzen.
         ClearPending();
+        _controller.OnBackspace(); // löscht er in eine eben korrigierte Stelle, war es eine Ablehnung
         _watcher.OnBackspace();
         if (_recording.IsActive) _recording.AppendBackspace();
     }
@@ -186,6 +191,7 @@ internal sealed class TrayApp : ApplicationContext
     private void DropContext()
     {
         ClearPending();
+        _controller.ForgetLastCorrection();
         _watcher.Invalidate();
     }
 
@@ -268,6 +274,27 @@ internal sealed class TrayApp : ApplicationContext
         _status.KorrekturAngewandt(DateTime.Now);
         _correctionCount++;
         _trayIcon.Text = $"Rechtschreib-Trainer — {_correctionCount} Korrekturen";
+    }
+
+    /// <summary>Ab so vielen Rücktasten-Ablehnungen wird ein Wort nie mehr korrigiert.</summary>
+    private const int RejectionThreshold = 2;
+
+    private void OnCorrectionRejectedByBackspace(CorrectionRecord rejection)
+    {
+        DebugLog.Write($"per Rücktaste abgelehnt: '{rejection.Before}' -> '{rejection.After}'");
+        try
+        {
+            var often = DictionaryDistiller.RejectedOften(LearnStore.ReadAll(AppPaths.CorrectionLog), RejectionThreshold);
+            if (often.Contains(rejection.Before, StringComparer.OrdinalIgnoreCase) && !_neverCorrect.Words.Contains(rejection.Before))
+            {
+                _neverCorrect.Add(rejection.Before);
+                Notify("Gelernt", $"„{rejection.Before}\" hast du {RejectionThreshold}× zurückgenommen — wird ab jetzt nicht mehr korrigiert.");
+            }
+        }
+        catch (IOException)
+        {
+            // Log gerade nicht lesbar - beim nächsten Mal zählt es mit.
+        }
     }
 
     private void OnCorrectionRejected(string word)

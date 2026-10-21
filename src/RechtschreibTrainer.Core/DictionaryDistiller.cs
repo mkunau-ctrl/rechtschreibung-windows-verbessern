@@ -30,13 +30,26 @@ public static class DictionaryDistiller
         int threshold)
     {
         var counts = new Dictionary<(string Before, string After), int>();
+        var rejected = new HashSet<(string, string)>();
 
         foreach (var r in records)
         {
+            if (r.Source == CorrectionSource.Rejected)
+            {
+                rejected.Add((r.Before, r.After));
+                continue;
+            }
+
             // Satzanfang-Grossschreibung ist eine reine Positionsregel, keine
             // Rechtschreibkorrektur - "ich" darf nie fest als "ich=Ich" ins
             // Woerterbuch wandern, sonst wuerde es UEBERALL im Satz gross.
             if (r.Source == CorrectionSource.Capitalization)
+                continue;
+
+            // Runde 3: genauso jede andere reine Gross-/Kleinschreib-Korrektur.
+            // Ob "würde"/"Würde" gross gehoert, entscheidet der Satzkontext
+            // live; fest gelernt zerstoerte "würde=Würde" jedes "ich würde".
+            if (string.Equals(r.Before, r.After, StringComparison.OrdinalIgnoreCase))
                 continue;
 
             if (excludeBefore.Contains(r.Before))
@@ -47,9 +60,22 @@ public static class DictionaryDistiller
         }
 
         return counts
-            .Where(kv => kv.Value >= threshold)
+            .Where(kv => kv.Value >= threshold && !rejected.Contains(kv.Key))
             .Select(kv => new Candidate(kv.Key.Before, kv.Key.After, kv.Value))
             .OrderByDescending(c => c.Count)
             .ToList();
     }
+
+    /// <summary>
+    /// Wörter, deren Korrektur der Nutzer mindestens <paramref name="threshold"/>
+    /// mal per Rücktaste zurückgenommen hat — die gehören auf die
+    /// „nie korrigieren"-Liste.
+    /// </summary>
+    public static IReadOnlyList<string> RejectedOften(IEnumerable<CorrectionRecord> records, int threshold) =>
+        records
+            .Where(r => r.Source == CorrectionSource.Rejected)
+            .GroupBy(r => r.Before, StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Count() >= threshold)
+            .Select(g => g.Key)
+            .ToList();
 }

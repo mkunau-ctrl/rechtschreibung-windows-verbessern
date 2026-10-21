@@ -63,13 +63,13 @@ public class DictionaryDistillerTests
     [Fact]
     public void SortiertNachHaeufigkeitAbsteigend()
     {
-        var records = Enumerable.Repeat(Record("a", "A"), 3)
-            .Concat(Enumerable.Repeat(Record("b", "B"), 7))
+        var records = Enumerable.Repeat(Record("nocg", "noch"), 3)
+            .Concat(Enumerable.Repeat(Record("cih", "ich"), 7))
             .ToArray();
 
         var result = DictionaryDistiller.Distill(records, NoExclusions, threshold: 3);
 
-        Assert.Equal(["b", "a"], result.Select(r => r.Before));
+        Assert.Equal(["cih", "nocg"], result.Select(r => r.Before));
     }
 
     [Fact]
@@ -93,15 +93,49 @@ public class DictionaryDistillerTests
     [Fact]
     public void SchlaegtEchteRechtschreibkorrekturenAusDerFuzzySucheWeiterhinVor()
     {
-        // Im Unterschied zu Capitalization: "ordner" -> "Ordner" ist ein
-        // eindeutiges Substantiv (immer gross, unabhaengig von der Position)
-        // und darf fest vorgeschlagen werden.
-        var records = Enumerable.Repeat(Record("ordner", "Ordner", CorrectionSource.Spelling), 3).ToArray();
+        var records = Enumerable.Repeat(Record("porjekt", "Projekt", CorrectionSource.Spelling), 3).ToArray();
 
         var result = DictionaryDistiller.Distill(records, NoExclusions, threshold: 3);
 
         var only = Assert.Single(result);
-        Assert.Equal("ordner", only.Before);
-        Assert.Equal("Ordner", only.After);
+        Assert.Equal("porjekt", only.Before);
+        Assert.Equal("Projekt", only.After);
+    }
+
+    [Theory]
+    [InlineData("würde", "Würde")]
+    [InlineData("ordner", "Ordner")]
+    [InlineData("github", "GitHub")]
+    public void LerntNieEineReineGrossKleinKorrektur(string before, string after)
+    {
+        // Runde 3: Ob "würde"/"Würde" gross gehoert, entscheidet der Satz.
+        // Fest gelernt hatte "würde=Würde" jedes "ich würde" zerstoert.
+        var records = Enumerable.Repeat(Record(before, after, CorrectionSource.Spelling), 5).ToArray();
+
+        Assert.Empty(DictionaryDistiller.Distill(records, NoExclusions, threshold: 3));
+    }
+
+    [Fact]
+    public void LerntNieEinPaarDasDerNutzerAbgelehntHat()
+    {
+        var records = Enumerable.Repeat(Record("anderern", "Wanderern"), 3)
+            .Append(Record("anderern", "Wanderern", CorrectionSource.Rejected))
+            .ToArray();
+
+        Assert.Empty(DictionaryDistiller.Distill(records, NoExclusions, threshold: 3));
+    }
+
+    [Fact]
+    public void ZweimalAbgelehntWirdNieMehrKorrigiert()
+    {
+        var records = new[]
+        {
+            Record("kunde", "Kunde"),
+            Record("kunde", "Kunde", CorrectionSource.Rejected),
+            Record("abc", "Abc", CorrectionSource.Rejected),
+            Record("kunde", "Kunde", CorrectionSource.Rejected),
+        };
+
+        Assert.Equal(["kunde"], DictionaryDistiller.RejectedOften(records, threshold: 2));
     }
 }

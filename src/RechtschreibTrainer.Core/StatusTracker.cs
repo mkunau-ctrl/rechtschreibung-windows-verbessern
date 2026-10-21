@@ -77,6 +77,8 @@ public sealed class StatusTracker
         int heute = 0, gesamt = 0;
         foreach (var r in records)
         {
+            if (r.Source == CorrectionSource.Rejected)
+                continue; // Ablehnung, keine Korrektur
             gesamt++;
             if (r.At.Date == jetzt.Date) heute++;
         }
