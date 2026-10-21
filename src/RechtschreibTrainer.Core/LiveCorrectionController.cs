@@ -54,14 +54,17 @@ public sealed class LiveCorrectionController
         // Nach Enter steht der Zeilenumbruch zwischen Cursor und Wort. Ihn
         // mitzulöschen und neu zu tippen würde in Chat-Fenstern die Nachricht
         // ein zweites Mal abschicken — also gar nicht anfassen.
-        if (word.Boundary == '\n')
+        if (word.Boundary == '\n' || word.TypedAfterBoundary.Contains('\n'))
+            return;
+
+        if (word.Context.DoNotTouch || word.Context.IsSecret)
             return;
 
         var result = _corrector.Correct(word.Word, word.Context);
         if (!result.HasCorrection)
             return;
 
-        var tail = word.Boundary + typedSince;
+        var tail = word.Boundary + word.TypedAfterBoundary + typedSince;
         var deleteCount = word.Word.Length + tail.Length;
         var insert = result.Corrected + tail;
         var originalInsert = word.Word + tail;

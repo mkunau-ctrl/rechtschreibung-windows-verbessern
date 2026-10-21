@@ -31,5 +31,18 @@ public static class Determiners
         "manche", "mancher", "manches", "manchen", "manchem",
     };
 
+    /// <summary>
+    /// Präposition + Artikel in einem Wort ("am Ende", "im Spiel", "zum Testen").
+    /// Genauso sicherer Substantiv-Beleg wie ein Artikel, fehlte aber bis
+    /// Runde 3 — in den echten Daten des Nutzers einer der häufigsten Fälle.
+    /// </summary>
+    private static readonly HashSet<string> Contractions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "am", "im", "zum", "zur", "beim", "vom", "ins", "ans", "aufs", "fürs",
+        "übers", "ums", "durchs", "hinters", "unters", "vors",
+    };
+
     public static bool Contains(string word) => Words.Contains(word);
+
+    public static bool IsContraction(string word) => Contractions.Contains(word);
 }
