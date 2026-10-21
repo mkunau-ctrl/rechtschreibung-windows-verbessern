@@ -8,12 +8,31 @@ namespace RechtschreibTrainer.Core;
 /// Wörterbuch-Treffer noch sicher, geratene Kandidaten aber nicht.
 /// </param>
 /// <param name="PrecededByDeterminer">
-/// Stand direkt davor ein Artikel oder Possessivpronomen (der/die/das/ein/
-/// mein/…)? Schwaches, aber recht sicheres Indiz, dass hier ein Substantiv
-/// folgt — entscheidet bei mehrdeutigen Substantiven über die Großschreibung.
+/// Substantiv-Beleg (der Name ist historisch): Stand direkt davor ein Artikel
+/// oder Possessivpronomen (der/die/das/ein/mein/…), eine Kontraktion
+/// (am/im/zum/…), eine Zahl, oder Artikel + dekliniertes Adjektiv ("die
+/// ganze …")? Recht sicheres Indiz, dass hier ein Substantiv folgt —
+/// entscheidet bei mehrdeutigen Wörtern über die Großschreibung.
+/// </param>
+/// <param name="DoNotTouch">
+/// Gar nicht anfassen: Teil einer E-Mail/URL/eines Pfads, Abkürzung, Wort mit
+/// Ziffern, oder Passwort-Kontext.
+/// </param>
+/// <param name="IsSecret">
+/// Wort direkt nach einem Passwort-Auslösewort — darf auch nirgends
+/// protokolliert werden (impliziert <paramref name="DoNotTouch"/>).
+/// </param>
+/// <param name="PrecededByContraction">
+/// Stand direkt davor eine Kontraktion (zum/beim/vom/…)? Dann ist ein
+/// Infinitiv ein Substantiv („zum Testen").
 /// </param>
 public readonly record struct WordContext(
-    bool IsSentenceStart, bool AllowSpellGuess = true, bool PrecededByDeterminer = false);
+    bool IsSentenceStart,
+    bool AllowSpellGuess = true,
+    bool PrecededByDeterminer = false,
+    bool DoNotTouch = false,
+    bool IsSecret = false,
+    bool PrecededByContraction = false);
 
 /// <summary>Woher eine Korrektur stammt — für Benachrichtigung und Lern-Log.</summary>
 public enum CorrectionSource
@@ -63,8 +82,8 @@ public sealed class OfflineCorrector
         var current = word;
         var source = CorrectionSource.None;
 
-        // Vom Nutzer zurückgewiesen — schlägt jede andere Quelle.
-        if (_neverCorrect.Contains(word))
+        // Technisch/geheim, oder vom Nutzer zurückgewiesen — schlägt jede andere Quelle.
+        if (context.DoNotTouch || context.IsSecret || _neverCorrect.Contains(word))
             return new CorrectionResult(word, word, CorrectionSource.None);
 
         if (_dictionary.TryCorrect(current, out var fromDict))
@@ -85,7 +104,7 @@ public sealed class OfflineCorrector
                 current = fromReplacement;
                 source = CorrectionSource.Replacement;
             }
-            else if (context.AllowSpellGuess && _spelling?.Suggest(current, context.PrecededByDeterminer) is { } fromSpelling)
+            else if (context.AllowSpellGuess && _spelling?.Suggest(current, context.PrecededByDeterminer, context.PrecededByContraction) is { } fromSpelling)
             {
                 current = fromSpelling;
                 source = CorrectionSource.Spelling;
@@ -100,6 +119,18 @@ public sealed class OfflineCorrector
                 current = viaChain;
                 source = CorrectionSource.Spelling;
             }
+        }
+
+        // Schlussprüfung (Runde 2, Punkt 1): Was geraten oder per Regel
+        // erzeugt wurde, muss aus bekannten Wörtern bestehen - nie ein
+        // Nicht-Wort wie "naheste" -> "nahesteh" tippen. Wörterbuch-Einträge
+        // sind handgeprüft und bleiben davon unberührt.
+        if (source is CorrectionSource.Spelling or CorrectionSource.Rule or CorrectionSource.Replacement
+            && _spelling is not null
+            && current.Split(' ', StringSplitOptions.RemoveEmptyEntries).Any(t => !_spelling.IsKnownWord(t)))
+        {
+            current = word;
+            source = CorrectionSource.None;
         }
 
         if (context.IsSentenceStart && current.Length > 0 && char.IsLower(current[0]))

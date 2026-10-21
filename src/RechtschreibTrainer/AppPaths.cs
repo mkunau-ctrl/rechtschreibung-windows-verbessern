@@ -46,6 +46,12 @@ internal static class AppPaths
     /// <summary>Wörter, die klein bleiben, auch wenn es gleichlautende Substantive gibt.</summary>
     public static string KeepLowercaseFile => Path.Combine(AppContext.BaseDirectory, "data", "klein-schreiben.txt");
 
+    /// <summary>Korpus: wie oft ein Wort mitten im Satz groß/klein steht (Tatoeba, siehe data/HERKUNFT.md).</summary>
+    public static string CasingFile => Path.Combine(AppContext.BaseDirectory, "data", "schreibung.txt");
+
+    /// <summary>Wörter, die klein gültig sind und groß ein Substantiv ("testen"/"Testen").</summary>
+    public static string LowercaseValidFile => Path.Combine(AppContext.BaseDirectory, "data", "klein-gueltig.txt");
+
     /// <summary>Wörter, die nur mit vorangehendem Artikel großgeschrieben werden (siehe Determiners).</summary>
     public static string AmbiguousNounsFile => Path.Combine(AppContext.BaseDirectory, "mehrdeutige-substantive.txt");
 

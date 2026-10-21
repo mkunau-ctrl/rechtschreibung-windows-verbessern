@@ -47,7 +47,9 @@ public static class RepoFiles
         Optional(Path.Combine(DataDir, "substantive.txt")),
         Optional(Path.Combine(DataDir, "klein-schreiben.txt")),
         Optional(Path.Combine(DataDir, "namen.txt")),
-        Optional(Path.Combine(BundledDir, "mehrdeutige-substantive.txt")));
+        Optional(Path.Combine(BundledDir, "mehrdeutige-substantive.txt")),
+        Optional(Path.Combine(DataDir, "schreibung.txt")),
+        Optional(Path.Combine(DataDir, "klein-gueltig.txt")));
 
     /// <summary>Die mitgelieferten Vertipper-Listen, in der Ladereihenfolge des Programms.</summary>
     public static CorrectionDictionary LoadDictionary()

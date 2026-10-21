@@ -156,9 +156,15 @@ public class AlltagBenchmarkTests
     }
 
     // ---- Der erreichte Stand. Verbessert sich etwas, HIER hochsetzen. ----
-    private const double StandPraezision = 0.0;
-    private const double StandTrefferquote = 0.0;
-    private const double StandFehlalarme = 1.0;
+    // 2026-10-21, Ausgangsmessung (vor Runde 3):
+    //   Praezision 52,6 % | Trefferquote 67,8 % | Fehlalarme 46,4 %
+    // 2026-10-21, nach Runde 3 (Technik/Satzanfang/Passwort im WordWatcher,
+    //   Korpus-Grossschreibung, Kurzwoerter, Doppelbuchstaben, zwei Fehler,
+    //   Echtwort-Fehler, fehlende Leertaste, Kompositum-Schutz):
+    //   Praezision 100,0 % | Trefferquote 97,4 % | Fehlalarme 0,0 %
+    private const double StandPraezision = 1.0;
+    private const double StandTrefferquote = 0.973; // exakt 111/114 = 0,97368...
+    private const double StandFehlalarme = 0.0;
 
     [Fact]
     public void JederFallIstEindeutig()

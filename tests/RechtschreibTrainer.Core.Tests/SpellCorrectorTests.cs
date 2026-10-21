@@ -221,4 +221,182 @@ public class SpellCorrectorTests
 
         Assert.Equal("Fallen", c.Suggest("fallen", precededByDeterminer: true));
     }
+
+    // ---- Runde 3: aus den echten Tippdaten ----
+
+    // Haeufigkeiten aus data/haeufigkeit.txt (OpenSubtitles), gerundet.
+    private static readonly string[] Alltag =
+    [
+        "ich", "mal", "will", "wild", "geht", "kann", "kahn", "noch", "noah", "mein", "guck",
+        "auch", "nicht", "sind", "habe", "mach", "mich", "und", "ein", "eine", "Zeit", "kommt", "alles",
+        "wenn", "das", "dem", "mit", "ja", "vor", "allem", "damit", "passt", "Spiel", "genau", "Genua", "meinen", "Mienen",
+        "anderen", "Wanderern", "Lied", "Leid",
+    ];
+
+    private static readonly string[] AlltagHaeufigkeit =
+    [
+        "ich 5890279", "mal 435631", "will 293445", "wild 4282", "geht 290919", "kann 461755",
+        "kahn 545", "noch 572486", "noah 1877", "mein 384765", "guck 8577", "auch 449250",
+        "nicht 2756783", "sind 727078", "habe 636175", "mach 93345", "mich 893076", "und 2289891",
+        "ein 1315301", "eine 1000000", "zeit 160393", "kommt 153845", "alles 366575", "wenn 694462", "das 3122198",
+        "dem 400000", "mit 1014541", "ja 1054114", "vor 200000", "allem 30000", "damit 150000",
+        "passt 40000", "spiel 50000", "genau 117667", "genua 117", "meinen 128288", "mienen 37",
+        "anderen 86205", "wanderern 30", "lied 9000", "leid 30000",
+    ];
+
+    private static SpellCorrector BuildAlltag() =>
+        new(WordList.FromLines(Alltag, AlltagHaeufigkeit, nouns: ["Zeit", "Spiel", "Mienen", "Wanderern", "Lied", "Leid"]),
+            SpellSettings.Default);
+
+    [Theory]
+    [InlineData("kannn", "kann")]
+    [InlineData("wennn", "wenn")]
+    [InlineData("allles", "alles")]
+    [InlineData("kommmmt", "kommt")]
+    [InlineData("einn", "ein")]
+    [InlineData("uund", "und")]
+    [InlineData("jaa", "ja")]
+    [InlineData("mmit", "mit")]
+    public void EntferntDoppeltGetippteBuchstaben(string getippt, string erwartet)
+    {
+        Assert.Equal(erwartet, BuildAlltag().Suggest(getippt));
+    }
+
+    [Theory]
+    [InlineData("ihc", "ich")]
+    [InlineData("mla", "mal")]
+    [InlineData("wil", "will")]
+    [InlineData("kan", "kann")]
+    [InlineData("noh", "noch")]
+    [InlineData("mien", "mein")]
+    [InlineData("ghet", "geht")]
+    [InlineData("sidn", "sind")]
+    [InlineData("ahbe", "habe")]
+    [InlineData("auh", "auch")]
+    [InlineData("niht", "nicht")]
+    public void KorrigiertKurzeWoerterZuEinemSehrHaeufigenWort(string getippt, string erwartet)
+    {
+        Assert.Equal(erwartet, BuildAlltag().Suggest(getippt));
+    }
+
+    [Fact]
+    public void KurzesWortOhneKlarenSiegerBleibtStehen()
+    {
+        // "mch": "mach" und "mich" sind beide sehr haeufig - nicht raten.
+        Assert.Null(BuildAlltag().Suggest("mch"));
+    }
+
+    [Fact]
+    public void KurzesWortMitNurSeltenemKandidatenBleibtStehen()
+    {
+        var c = Build(["kahn"], "kahn 545");
+
+        Assert.Null(c.Suggest("kan"));
+    }
+
+    [Fact]
+    public void ErgaenztKeinenVergessenenErstenBuchstaben()
+    {
+        // "anderern" -> "Wanderern" (vorn ein W ergaenzt) war ein echter
+        // Fehlgriff; vorn vergessene Buchstaben sind meist Bruchstuecke.
+        Assert.Equal("anderen", BuildAlltag().Suggest("anderern"));
+    }
+
+    [Theory]
+    [InlineData("genua", "genau")]
+    [InlineData("mienen", "meinen")]
+    public void KorrigiertEinSeltenesWortDasFastSicherEinVertipperIst(string getippt, string erwartet)
+    {
+        Assert.Equal(erwartet, BuildAlltag().Suggest(getippt));
+    }
+
+    [Fact]
+    public void MachtAusEinemHaeufigenEchtenWortKeinAnderes()
+    {
+        // "lied" ist selbst haeufig - kein Echtwort-Fehler, nur Grossschreibung.
+        Assert.Equal("Lied", BuildAlltag().Suggest("lied"));
+    }
+
+    [Fact]
+    public void GrossGetipptesSeltenesWortIstGemeint()
+    {
+        // Wer "Genua" gross tippt, meint die Stadt.
+        Assert.Null(BuildAlltag().Suggest("Genua"));
+    }
+
+    [Theory]
+    [InlineData("vorallem", "vor allem")]
+    [InlineData("damitich", "damit ich")]
+    [InlineData("demspiel", "dem Spiel")]
+    [InlineData("japasst", "ja passt")]
+    public void SetztEineFehlendeLeertaste(string getippt, string erwartet)
+    {
+        Assert.Equal(erwartet, BuildAlltag().Suggest(getippt));
+    }
+
+    [Fact]
+    public void SehrHaeufigesWortSchlaegtSeltenesTrotzEtwasBessererFehlerArt()
+    {
+        // "anderern": "naderern" (vertauscht, Gewicht 1,0) gegen "anderen"
+        // (ein Buchstabe zu viel, 0,9). Bei fast gleicher Fehlerart und
+        // riesigem Haeufigkeitsunterschied gewinnt das haeufige Wort.
+        var c = Build(["naderern", "anderen"], "anderen 86205");
+
+        Assert.Equal("anderen", c.Suggest("anderern"));
+    }
+
+    [Fact]
+    public void SeltenerOrtsnameKleinGetipptIstEinVertipper()
+    {
+        // "wil": nur als Ortsname "Wil" bekannt - klein getippt meint man "will".
+        var c = new SpellCorrector(
+            WordList.FromLines(["will"], ["will 293445"], properNouns: ["Wil"]), SpellSettings.Default);
+
+        Assert.Equal("will", c.Suggest("wil"));
+    }
+
+    [Theory]
+    [InlineData("vileicht", "vielleicht")]
+    [InlineData("sytsme", "system")]
+    public void KorrigiertZweiFehlerInLangenWoerternWennEindeutig(string getippt, string erwartet)
+    {
+        var c = Build(["vielleicht", "system", "systeme"], "vielleicht 200000", "system 20000", "systeme 1000");
+
+        Assert.Equal(erwartet, c.Suggest(getippt));
+    }
+
+    [Theory]
+    [InlineData("transportwege")]
+    [InlineData("wartebereich")]
+    [InlineData("präventionsmaßnahmen")]
+    public void RaetNichtBeiEinemZerlegbarenKompositum(string wort)
+    {
+        var c = new SpellCorrector(WordList.FromLines(
+            ["Transport", "Wege", "Transportweg", "warte", "Bereich", "Wertebereich", "Prävention", "Maßnahmen", "Präventionsmaßnahme"],
+            [], nouns: ["Wege", "Bereich", "Maßnahmen", "Transport", "Prävention"]), SpellSettings.Default);
+
+        var s = c.Suggest(wort);
+
+        Assert.True(s is null || string.Equals(s, wort, StringComparison.OrdinalIgnoreCase),
+            $"{wort} -> {s}");
+    }
+
+    [Theory]
+    [InlineData("E-Mails")]
+    [InlineData("Fleisch-")]
+    [InlineData("Lenas")]
+    public void LaesstBindestrichWoerterUndGenitivVonNamenInRuhe(string wort)
+    {
+        var c = new SpellCorrector(WordList.FromLines(
+            ["E", "Mails", "Emails", "Fleisch", "Leonas"], [], properNouns: ["Lena"]), SpellSettings.Default);
+
+        Assert.Null(c.Suggest(wort));
+    }
+
+    [Fact]
+    public void TrenntKeinUnbekanntesWortHinterEinerPraepositionAufEinSubstantiv()
+    {
+        // "vorspiel" hinter "vor" waere ein Kompositum, kein fehlendes Leerzeichen.
+        Assert.Null(BuildAlltag().Suggest("vorspiel"));
+    }
 }
