@@ -126,6 +126,16 @@ in dieser	woche	Woche	gross
 das ist eine	frage	Frage	gross
 die	leistung	Leistung	gross
 ich habe einen	termin	Termin	gross
+der neue	monitor	Monitor	gross
+frag den	admin	Admin	gross
+eine neue	session	Session	gross
+ein	scooter	Scooter	gross
+hier ist die	email	Email|E-Mail	gross
+der	flow	Flow	gross
+der	computer	Computer	gross
+am	montag	Montag	gross
+im	ordner	Ordner	gross
+die	videos	Videos	gross
 
 # ------------------------------------------------------------------ name
 alles auf	github	GitHub	name
@@ -133,6 +143,7 @@ ich habe ein	iphone	iPhone	name
 schau bei	claude	Claude	name
 öffne	chrome	Chrome	name
 auf meinem	windows	Windows	name
+auf	kleinanzeigen	-|Kleinanzeigen	name
 
 # ------------------------------------------------------------------ tippfehler
 das will	ihc	ich	tippfehler

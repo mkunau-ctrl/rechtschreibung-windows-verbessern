@@ -14,6 +14,10 @@
     Lizenz : CC BY-SA 4.0 (Wikipedia-Text). Die abgeleitete Liste steht unter
              derselben Lizenz; Herkunft ist in data/HERKUNFT.md vermerkt.
 
+    Zweite Quelle (seit 2026-10-22): LibreOffice-Autokorrektur Deutsch,
+             extras/source/autocorr/lang/de/DocumentList.xml (MPL-2.0),
+             derselbe Filter.
+
     Praezisions-Filter (ein Paar kommt NUR rein, wenn alle Punkte zutreffen):
       * 'falsch' ist KEIN bekanntes deutsches Wort (nicht in woerter.txt /
         substantive.txt / namen.txt) - sonst wuerde ein korrektes Wort
@@ -146,18 +150,44 @@ $rx = [regex]'\{\{[Tt]ippfehler\|([^|}]+)\|([^|}]+)(?:\|[^}]*)?\}\}'
 $onlyLetters = [regex]'^[\p{L}\-]+$'
 
 $pairs = [ordered]@{}
-$stats = [ordered]@{ roh = 0; stern = 0; plus = 0; nichtwort = 0; casing = 0; ssvariante = 0; ersatzschreibung = 0; falschIstWort = 0; richtigUnbelegt = 0; schonVorhanden = 0; holdout = 0; konflikt = 0; genommen = 0 }
+$pairSource = @{}
+$stats = [ordered]@{ roh = 0; stern = 0; plus = 0; nichtwort = 0; casing = 0; ssvariante = 0; ersatzschreibung = 0; falschIstWort = 0; richtigUnbelegt = 0; schonVorhanden = 0; holdout = 0; konflikt = 0; genommen = 0; wikipedia = 0; libreoffice = 0 }
+
+# 1) Rohpaare aus beiden Quellen sammeln, 2) gemeinsam streng filtern.
+$rawPairs = [System.Collections.Generic.List[object]]::new()
 
 foreach ($sub in $subpages) {
     $url = "https://de.wikipedia.org/wiki/Wikipedia:Liste_von_Tippfehlern/$([uri]::EscapeDataString($sub))?action=raw"
     Write-Host "  hole $sub ..."
     try { $raw = Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 60 | Select-Object -ExpandProperty Content }
     catch { Write-Warning "  $sub uebersprungen: $($_.Exception.Message)"; continue }
-
     foreach ($m in $rx.Matches($raw)) {
+        $rawPairs.Add([pscustomobject]@{ Wrong = $m.Groups[1].Value.Trim(); Right = $m.Groups[2].Value.Trim(); Source = 'wikipedia' })
+    }
+}
+
+# Zweite Quelle (Qualitaetsrunde 2/3): LibreOffice-Autokorrektur Deutsch,
+# extras/source/autocorr/lang/de/DocumentList.xml, Lizenz MPL-2.0.
+# Pfeil-/Symbol-/Bruch-Eintraege fallen unten automatisch durch den Buchstabenfilter.
+$loUrl = 'https://raw.githubusercontent.com/LibreOffice/core/master/extras/source/autocorr/lang/de/DocumentList.xml'
+Write-Host "  hole LibreOffice-Autokorrektur ..."
+try {
+    $bytes = (Invoke-WebRequest -Uri $loUrl -UseBasicParsing -TimeoutSec 60).RawContentStream.ToArray()
+    $xml = [System.Text.Encoding]::UTF8.GetString($bytes)
+    $loRx = [regex]'abbreviated-name="([^"]*)"\s+block-list:name="([^"]*)"'
+    foreach ($m in $loRx.Matches($xml)) {
+        $rawPairs.Add([pscustomobject]@{
+            Wrong = [System.Net.WebUtility]::HtmlDecode($m.Groups[1].Value).Trim()
+            Right = [System.Net.WebUtility]::HtmlDecode($m.Groups[2].Value).Trim()
+            Source = 'libreoffice' })
+    }
+}
+catch { Write-Warning "  LibreOffice uebersprungen: $($_.Exception.Message)" }
+
+foreach ($p in $rawPairs) {
         $stats.roh++
-        $wrong = $m.Groups[1].Value.Trim()
-        $right = $m.Groups[2].Value.Trim()
+        $wrong = $p.Wrong
+        $right = $p.Right
 
         if ($wrong -like '*`**' -or $right -like '*`**') { $stats.stern++; continue }
         if ($wrong.Contains('+') -or $right.Contains('+')) { $stats.plus++; continue }
@@ -190,16 +220,18 @@ foreach ($sub in $subpages) {
             continue
         }
         $pairs[$wl] = $right
-    }
+        $pairSource[$wl] = $p.Source
 }
 
 $final = $pairs.GetEnumerator() | Where-Object { $_.Value } | Sort-Object Key
 $stats.genommen = @($final).Count
+foreach ($e in $final) { $stats[$pairSource[$e.Key]]++ }
 
 $header = @"
 # Haeufige deutsche Tippfehler (falsch=richtig) - automatisch erzeugt.
 #
-# Quelle : Wikipedia "Liste von Tippfehlern" (de.wikipedia.org), CC BY-SA 4.0.
+# Quelle : Wikipedia "Liste von Tippfehlern" (de.wikipedia.org), CC BY-SA 4.0,
+#          und LibreOffice-Autokorrektur Deutsch (DocumentList.xml), MPL-2.0.
 # Abruf  : $(Get-Date -Format 'yyyy-MM-dd') durch scripts/fetch-fehlerlisten.ps1
 # Filter : 'falsch' ist kein bekanntes Wort, 'richtig' ist belegt, kein reiner
 #          Gross-/Klein- oder ss/ss-Unterschied, nicht von der Ersatzschreib-

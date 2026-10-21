@@ -163,7 +163,9 @@ public class AlltagBenchmarkTests
     //   Echtwort-Fehler, fehlende Leertaste, Kompositum-Schutz):
     //   Praezision 100,0 % | Trefferquote 97,4 % | Fehlalarme 0,0 %
     private const double StandPraezision = 1.0;
-    private const double StandTrefferquote = 0.973; // exakt 111/114 = 0,97368...
+    // 2026-10-22, +11 Faelle (Namen/Substantive ohne Woerterbuch-Eintrag):
+    //   Praezision 100,0 % | Trefferquote 97,6 % (122/125) | Fehlalarme 0,0 %
+    private const double StandTrefferquote = 0.976; // exakt 122/125
     private const double StandFehlalarme = 0.0;
 
     [Fact]
