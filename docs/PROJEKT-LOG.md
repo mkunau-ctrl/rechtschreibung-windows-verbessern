@@ -119,6 +119,10 @@ ebenfalls. Python 3.12 ist auf dem Rechner installiert (für das Datenskript).
   sondern auswerten wie in Runde 3: nur lokal im Scratchpad, Text nie ins
   Repo, nach Passwort-Auslösewörtern nicht weiterlesen. Dabei auch die Fälle
   `peicehr`/`psuh` (siehe oben) mit angehen.
+- **Schon ausgewertet, nicht noch einmal analysieren** (Nutzerwunsch):
+  `korrekturen.jsonl` Zeilen 1–1.482 (bis einschließlich
+  `2026-10-21T20:50:49`). Nächstes Mal nur die Einträge danach, also ab
+  Zeile 1.483. `debug.log` ist gelöscht und wird nicht mehr geschrieben.
 - Auto-Weiter wurde angeboten, keine Antwort — nicht erneut fragen.
 
 ## 2026-10-12 – PC-Hub-Anbindung (status.json)
