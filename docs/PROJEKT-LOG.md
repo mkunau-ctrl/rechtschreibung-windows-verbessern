@@ -114,7 +114,11 @@ ebenfalls. Python 3.12 ist auf dem Rechner installiert (für das Datenskript).
 - Wörter zusammenfügen (`Recht schreibung` → `Rechtschreibung`, Runde 2 Punkt 4b).
 - Echtwort-Fehler mit Kontext (`ich weis` → `weiß`) — braucht Bigramme.
 - Alter `git stash@{0}` aus einer frühen Sitzung prüfen und löschen.
-- `keystrokes.log` (Mitschreib-Modus vom 2026-09-04) liegt noch im Datenordner.
+- **Nächste Sitzung: `keystrokes.log` analysieren** (Mitschreib-Modus vom
+  2026-09-04, liegt im Datenordner). Nutzerwunsch 2026-10-22: nicht löschen,
+  sondern auswerten wie in Runde 3: nur lokal im Scratchpad, Text nie ins
+  Repo, nach Passwort-Auslösewörtern nicht weiterlesen. Dabei auch die Fälle
+  `peicehr`/`psuh` (siehe oben) mit angehen.
 - Auto-Weiter wurde angeboten, keine Antwort — nicht erneut fragen.
 
 ## 2026-10-12 – PC-Hub-Anbindung (status.json)
