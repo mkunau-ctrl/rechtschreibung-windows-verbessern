@@ -85,7 +85,7 @@ Tastenlog aus.
 | Fließtext | 96,6 % | **98,3 %** |
 | Großer Text: gesamt / Treffer / Fehlalarme | 82,6 / 58,8 / 1,20 % | **85,6 / 64,7 / 0,15 %** |
 | Holdout ungesehene Tippfehler | 60/76 | **62/76** |
-| Tests | 209 | **332** |
+| Tests | 209 | **337** |
 
 **Nachtrag bei der Installation:** Beim ersten Start lernte die neue Version
 aus dem *alten* Log wieder `anderern=Wanderern` und `talkme=Talke` — das Log
@@ -106,9 +106,11 @@ bereinigt (Sicherung `woerterbuch.sicherung-2026-10-22.txt`),
 ebenfalls. Python 3.12 ist auf dem Rechner installiert (für das Datenskript).
 
 **Offene Punkte / Nächste Schritte:**
-- **Handtest durch den Nutzer**: Großbuchstaben/`?`/`@` tippen (kommen jetzt
-  an und werden nicht mehr zerstört), E-Mail-Adresse tippen, „ich würde",
-  „das passwort ist …", Rücktaste direkt nach einer Korrektur.
+- ~~Handtest durch den Nutzer~~ — **2026-10-22 bestanden** („das passt alles
+  so viel besser").
+- In derselben Nachricht blieben `peicehr` (speichere: Anfangsbuchstabe fehlt
+  + Dreher) und `psuh` (englisch „push", Dreher) stehen. Prüfen, ob das am
+  fehlenden Anfangsbuchstaben bzw. an fehlenden englischen Fachwörtern liegt.
 - Wörter zusammenfügen (`Recht schreibung` → `Rechtschreibung`, Runde 2 Punkt 4b).
 - Echtwort-Fehler mit Kontext (`ich weis` → `weiß`) — braucht Bigramme.
 - Alter `git stash@{0}` aus einer frühen Sitzung prüfen und löschen.
